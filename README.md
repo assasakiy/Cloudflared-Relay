@@ -64,58 +64,30 @@ Gateway reverse proxy aman berbasis Cloudflare Workers, Hono, TypeScript, dan Cl
 
 ## Panduan Instalasi & Deploy
 
-### 1. Clone & Install Dependensi
+### Metode 1: Deploy Otomatis via Cloudflare Dashboard (Recommended)
+
+1. Buka dashboard Cloudflare > **Workers & Pages** > **Create application** > **Connect to Git**.
+2. Pilih repository `Cloudflared-Relay`.
+3. Klik **Save and Deploy**.
+4. Selesai! Cloudflare otomatis membuatkan KV namespace (`RELAY_KV`) dan Worker otomatis mengisi akun admin default saat pertama kali diakses.
+
+> **Kredensial Default:**
+> - **Email**: `admin@example.com`
+> - **Password**: `AdminSuperSecret123!`
+> *(Segera ubah email dan password di menu **Settings > Akun Admin** setelah login).*
+
+---
+
+### Metode 2: Deploy Manual via CLI
 
 ```bash
 git clone https://github.com/assasakiy/Cloudflared-Relay.git
 cd Cloudflared-Relay
 npm install
-```
-
-### 2. Buat Cloudflare KV Namespace
-
-```bash
-npx wrangler kv namespace create RELAY_KV
-```
-
-Salin `id` KV yang dihasilkan ke dalam file `wrangler.toml`:
-
-```toml
-name = "cloudflare-relay"
-main = "src/index.ts"
-compatibility_date = "2026-06-01"
-
-[observability]
-enabled = true
-
-[[kv_namespaces]]
-binding = "RELAY_KV"
-id = "<ID_KV_NAMESPACE_ANDA>"
-
-[[rules]]
-type = "Text"
-globs = ["**/*.html"]
-fallthrough = true
-```
-
-### 3. Setup Akun Admin Awal
-
-Jalankan script untuk membuat kredensial admin awal di KV remote Cloudflare:
-
-```bash
-npm run setup-admin
-```
-
-> Kredensial default:
-> - **Email**: `admin@example.com`
-> - **Password**: `AdminSuperSecret123!`
-> *(Segera ubah email dan password di menu **Settings > Akun Admin** setelah login pertama kali).*
-
-### 4. Deploy ke Cloudflare Workers
-
-```bash
 npm run deploy
 ```
+
+*(Wrangler akan otomatis mem-provision KV `RELAY_KV` di akun Anda jika belum ada).*
 
 ---
 

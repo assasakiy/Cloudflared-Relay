@@ -7,7 +7,6 @@ enabled = true
 
 [[kv_namespaces]]
 binding = "RELAY_KV"
-id = "c7535a5b65fe4c129982816c675a8268"
 
 [[rules]]
 type = "Text"
