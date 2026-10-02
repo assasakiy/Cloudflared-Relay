@@ -3,6 +3,7 @@ export type AuthLogic = "ANY" | "ALL";
 export interface ApiKeyRecord {
   id: string;
   name: string;
+  key?: string;
   prefix: string;
   hash: string;
   status: "active" | "revoked";
@@ -16,6 +17,7 @@ export interface Client {
   status: boolean;
   logic: AuthLogic;
   ips: string[];
+  pass?: string | null;
   passHash: string | null;
   keys: ApiKeyRecord[];
   restrict: boolean;
@@ -39,8 +41,6 @@ export interface GlobalSettings {
   appName?: string;
   logoUrl?: string;
   theme?: "auto" | "light" | "dark";
-  cfAccountId?: string;
-  cfApiToken?: string;
 }
 
 export interface Bindings {
