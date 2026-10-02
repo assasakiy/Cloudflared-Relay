@@ -571,9 +571,26 @@ function vSettings(){
 
   let tokenStatusBadge = `<span class="badge off">Belum Dikonfigurasi</span>`;
   if(st.hasCfToken){
-    tokenStatusBadge = st.cfTokenSource === "dashboard"
-      ? `<span class="badge on">Terhubung (Dashboard)</span>`
-      : `<span class="badge on">Terhubung (Environment)</span>`;
+    if(st.tokenVerified === true){
+      tokenStatusBadge = `<span class="badge on">Aktif & Siap Build (${st.cfTokenSource === 'env' ? 'Secret' : 'KV'})</span>`;
+    } else if(st.tokenVerified === false){
+      tokenStatusBadge = `<span class="badge" style="background:var(--bad-s);color:var(--bad);font-weight:700">Di-revoke / Invalid</span>`;
+    } else {
+      tokenStatusBadge = `<span class="badge on">Tersimpan (${st.cfTokenSource === 'env' ? 'Secret' : 'KV'})</span>`;
+    }
+  }
+
+  let tokenAlertHtml = "";
+  if(st.hasCfToken && st.tokenVerified === false){
+    tokenAlertHtml = `<div class="card" style="padding:14px 18px;border:1px solid var(--bad);background:var(--bad-s);margin-bottom:16px">
+      <div style="font-weight:700;color:var(--bad);font-size:13.5px">⚠️ Peringatan: Token Di-revoke di Cloudflare!</div>
+      <div style="font-size:12.5px;color:var(--bad);margin-top:3px">${esc(st.tokenStatusMsg || "Token ini sudah tidak aktif di Cloudflare. Jika Anda melakukan git push atau update repo, build otomatis akan GAGAL!")}</div>
+    </div>`;
+  } else if(st.hasCfToken && st.tokenVerified === true){
+    tokenAlertHtml = `<div class="card" style="padding:12px 16px;border:1px solid var(--ok);background:var(--ok-s);margin-bottom:16px">
+      <div style="font-weight:700;color:var(--ok);font-size:13px">✓ Token Terverifikasi Aktif</div>
+      <div style="font-size:12px;color:var(--ok);margin-top:2px">Token Cloudflare valid. Update repo dan deploy berikutnya akan berjalan normal.</div>
+    </div>`;
   }
 
   return `<div class="top"><div><h2>Settings</h2><p class="sub">Pengaturan aplikasi, keamanan, dan integrasi.</p></div></div>
@@ -637,6 +654,8 @@ function vSettings(){
         </div>
         ${tokenStatusBadge}
       </div>
+
+      ${tokenAlertHtml}
       
       <label style="margin-top:0">Cloudflare Account ID</label>
       <div class="inline">
@@ -654,14 +673,8 @@ function vSettings(){
       </div>
       <div class="id" style="margin-top:6px">Kredensial tersimpan di Secret Worker atau KV. Bisa langsung dilihat & disalin untuk aplikasi client.</div>
 
-      <div class="foot" style="margin-top:24px;display:flex;justify-content:flex-end">
-        <button class="btn" id="btnSaveCf" disabled>${icons.save} Save changes</button>
-      </div>
-    </div>
-  </div>
-      <div class="id" style="margin-top:6px">ID dan Token ini dapat dilihat & disalin langsung kapan saja tanpa perlu login ulang ke dashboard Cloudflare.</div>
-
-      <div class="foot" style="margin-top:24px;display:flex;justify-content:flex-end">
+      <div class="foot" style="margin-top:24px;display:flex;justify-content:space-between;align-items:center">
+        <button class="btn ghost sm" id="btnTestCf" type="button">${icons.refresh} <span>Verifikasi Status Token</span></button>
         <button class="btn" id="btnSaveCf" disabled>${icons.save} Save changes</button>
       </div>
     </div>
@@ -1227,6 +1240,32 @@ document.addEventListener("click", async e => {
   else if(t.id === "cpCfTokBtn"){
     const v = $("#setCfTok")?.value || "";
     if(v) copyText(v, "Cloudflare API Token disalin!");
+  }
+  // Test/Verify Cloudflare Token
+  else if(t.id === "btnTestCf" || t.closest("#btnTestCf")){
+    const btn = $("#btnTestCf");
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${icons.spinner} <span>Memeriksa...</span>`;
+    try{
+      const tok = ($("#setCfTok")?.value || "").trim();
+      const res = await api("/api/settings/verify-cf", { method: "POST", body: { token: tok } });
+      if(res.valid){
+        state.settings.tokenVerified = true;
+        state.settings.tokenStatusMsg = res.message;
+        toast("✓ Token Cloudflare aktif & valid!");
+      }else{
+        state.settings.tokenVerified = false;
+        state.settings.tokenStatusMsg = res.error;
+        toast("Peringatan: " + (res.error || "Token di-revoke!"));
+      }
+      render();
+    }catch(err){
+      toast("Gagal verifikasi: " + err.message);
+    }finally{
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    }
   }
   // Save Settings: Branding
   else if(t.id === "btnSaveBranding"){

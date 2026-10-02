@@ -749,6 +749,27 @@ app.get("/api/settings", async (c) => {
   const hasToken = !!effectiveToken;
   const tokenSource = settings.cfApiToken ? "dashboard" : (envToken ? "env" : "none");
 
+  let tokenVerified: boolean | null = null;
+  let tokenStatusMsg = "";
+  if (effectiveToken) {
+    try {
+      const cfRes = await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify", {
+        headers: { Authorization: "Bearer " + effectiveToken },
+      });
+      const cfData: any = await cfRes.json().catch(() => ({}));
+      if (cfRes.ok && cfData.success && cfData.result?.status === "active") {
+        tokenVerified = true;
+        tokenStatusMsg = "Token aktif dan valid (Aman untuk build & update repo)";
+      } else {
+        tokenVerified = false;
+        tokenStatusMsg = cfData.errors?.[0]?.message || "Token di-revoke atau kedaluwarsa di Cloudflare";
+      }
+    } catch {
+      tokenVerified = null;
+      tokenStatusMsg = "Gagal memverifikasi ke Cloudflare API";
+    }
+  }
+
   return c.json({
     targetRestrict: settings.targetRestrict,
     appName: settings.appName || "Relay Gateway",
@@ -759,7 +780,44 @@ app.get("/api/settings", async (c) => {
     cfApiToken: effectiveToken,
     hasCfToken: hasToken,
     cfTokenSource: tokenSource,
+    tokenVerified,
+    tokenStatusMsg,
   });
+});
+
+app.post("/api/settings/verify-cf", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const kv = c.env.RELAY_KV;
+  const settings = await getGlobalSettings(kv);
+  const token = (body.token || settings.cfApiToken || c.env.CF_ANALYTICS_API_TOKEN || c.env.CLOUDFLARE_API_TOKEN || "").trim();
+
+  if (!token) {
+    return c.json({ valid: false, error: "Token belum diisi" });
+  }
+
+  try {
+    const res = await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify", {
+      headers: { Authorization: "Bearer " + token },
+    });
+    const data: any = await res.json().catch(() => ({}));
+    if (res.ok && data.success && data.result?.status === "active") {
+      return c.json({
+        valid: true,
+        status: "active",
+        message: "Token Cloudflare valid dan aktif. Aman untuk build & update repo.",
+      });
+    }
+    return c.json({
+      valid: false,
+      status: "invalid",
+      error: data.errors?.[0]?.message || "Token tidak valid atau sudah di-revoke",
+    });
+  } catch (err: any) {
+    return c.json({
+      valid: false,
+      error: err?.message || "Gagal menghubungi Cloudflare API",
+    });
+  }
 });
 
 app.post("/api/settings", async (c) => {
