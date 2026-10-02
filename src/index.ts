@@ -732,7 +732,8 @@ app.get("/api/settings", async (c) => {
   const envToken = c.env.CF_ANALYTICS_API_TOKEN || c.env.CLOUDFLARE_API_TOKEN || "";
 
   const effectiveAccountId = settings.cfAccountId || envAccountId;
-  const hasToken = !!(settings.cfApiToken || envToken);
+  const effectiveToken = settings.cfApiToken || envToken;
+  const hasToken = !!effectiveToken;
   const tokenSource = settings.cfApiToken ? "dashboard" : (envToken ? "env" : "none");
 
   return c.json({
@@ -742,6 +743,7 @@ app.get("/api/settings", async (c) => {
     theme: settings.theme || "auto",
     adminEmail: admin?.email || "Belum diatur",
     cfAccountId: effectiveAccountId,
+    cfApiToken: effectiveToken,
     hasCfToken: hasToken,
     cfTokenSource: tokenSource,
   });
@@ -804,7 +806,8 @@ app.post("/api/settings", async (c) => {
   const envAccountId = c.env.CF_ANALYTICS_ACCOUNT_ID || c.env.CLOUDFLARE_ACCOUNT_ID || "";
   const envToken = c.env.CF_ANALYTICS_API_TOKEN || c.env.CLOUDFLARE_API_TOKEN || "";
   const effectiveAccountId = updatedSettings.cfAccountId || envAccountId;
-  const hasToken = !!(updatedSettings.cfApiToken || envToken);
+  const effectiveToken = updatedSettings.cfApiToken || envToken;
+  const hasToken = !!effectiveToken;
   const tokenSource = updatedSettings.cfApiToken ? "dashboard" : (envToken ? "env" : "none");
 
   return c.json({
@@ -815,6 +818,7 @@ app.post("/api/settings", async (c) => {
     theme: updatedSettings.theme || "auto",
     adminEmail: updatedAdmin?.email || "",
     cfAccountId: effectiveAccountId,
+    cfApiToken: effectiveToken,
     hasCfToken: hasToken,
     cfTokenSource: tokenSource,
   });

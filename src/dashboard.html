@@ -240,7 +240,7 @@ const state={
   settingsTab: "branding",
   clients: [],
   global: [],
-  settings: { appName:"Relay Gateway", logoUrl:"", theme:"auto", targetRestrict:false, adminEmail:"", cfAccountId:"", hasCfToken:false, cfTokenSource:"none" },
+  settings: { appName:"Relay Gateway", logoUrl:"", theme:"auto", targetRestrict:false, adminEmail:"", cfAccountId:"", cfApiToken:"", hasCfToken:false, cfTokenSource:"none" },
   analytics: { configured:true, totalRequests:0, totalErrors:0, avgDurationMs:0, successRate:"100.0", hourly:[], logs:[] }
 };
 
@@ -627,23 +627,32 @@ function vSettings(){
     </div>
   </div>
 
-  <!-- Tab 3: Cloudflare Analytics -->
+  <!-- Tab 3: Cloudflare Analytics & Credentials -->
   <div class="tab-pane ${tab==='analytics'?'on':''}" id="pane-analytics">
     <div class="card set" style="padding:22px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <div style="font-weight:700">Status Koneksi Analytics</div>
+        <div>
+          <div style="font-weight:700">Kredensial Akun Cloudflare</div>
+          <div class="id">ID Akun dan API Token untuk analitik atau integrasi client.</div>
+        </div>
         ${tokenStatusBadge}
       </div>
       
       <label style="margin-top:0">Cloudflare Account ID</label>
-      <input id="setCfAcc" type="text" value="${esc(st.cfAccountId)}" placeholder="a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6">
+      <div class="inline">
+        <input id="setCfAcc" type="text" value="${esc(st.cfAccountId)}" placeholder="a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6">
+        <button class="btn sm" id="cpCfAccBtn" type="button">${icons.copy} Copy</button>
+      </div>
 
       <label>Cloudflare API Token (Account Analytics: Read)</label>
-      <div class="input-wrap">
-        <input id="setCfTok" type="password" placeholder="${st.hasCfToken ? '•••••••••••••••• (Tersimpan)' : 'Masukkan Cloudflare API Token'}">
-        <button class="btn-eye" id="toggleTokEye" type="button" aria-label="Toggle token">${icons.eye}</button>
+      <div class="inline" style="position:relative">
+        <div class="input-wrap" style="flex:1">
+          <input id="setCfTok" type="password" value="${esc(st.cfApiToken || '')}" placeholder="${st.hasCfToken ? '•••••••••••••••• (Tersimpan)' : 'Masukkan Cloudflare API Token'}">
+          <button class="btn-eye" id="toggleTokEye" type="button" aria-label="Toggle token">${icons.eye}</button>
+        </div>
+        <button class="btn sm" id="cpCfTokBtn" type="button" ${st.cfApiToken ? '' : 'disabled'}>${icons.copy} Copy</button>
       </div>
-      <div class="id" style="margin-top:6px">Prioritas: Token di sini akan menimpa token dari Environment variable jika diisi.</div>
+      <div class="id" style="margin-top:6px">ID dan Token ini dapat dilihat & disalin langsung kapan saja tanpa perlu login ulang ke dashboard Cloudflare.</div>
 
       <div class="foot" style="margin-top:24px;display:flex;justify-content:flex-end">
         <button class="btn" id="btnSaveCf" disabled>${icons.save} Save changes</button>
@@ -1201,6 +1210,16 @@ document.addEventListener("click", async e => {
       inp.type = "password";
       t.style.color = "var(--mute)";
     }
+  }
+  // Copy Cloudflare Account ID
+  else if(t.id === "cpCfAccBtn"){
+    const v = $("#setCfAcc")?.value || "";
+    if(v) copyText(v, "Cloudflare Account ID disalin!");
+  }
+  // Copy Cloudflare API Token
+  else if(t.id === "cpCfTokBtn"){
+    const v = $("#setCfTok")?.value || "";
+    if(v) copyText(v, "Cloudflare API Token disalin!");
   }
   // Save Settings: Branding
   else if(t.id === "btnSaveBranding"){
