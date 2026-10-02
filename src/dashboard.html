@@ -582,7 +582,7 @@ function vSettings(){
     <div class="tabs" id="settingsTabs">
       <button class="tab ${tab==='branding'?'on':''}" data-tab="branding">${icons.palette} <span>Branding & Tampilan</span></button>
       <button class="tab ${tab==='relay'?'on':''}" data-tab="relay">${icons.shield} <span>Relay & Keamanan</span></button>
-      <button class="tab ${tab==='analytics'?'on':''}" data-tab="analytics">${icons.cloud} <span>Cloudflare Analytics</span></button>
+      <button class="tab ${tab==='cloudflare'?'on':''}" data-tab="cloudflare">${icons.cloud} <span>Cloudflare API & Secrets</span></button>
       <button class="tab ${tab==='admin'?'on':''}" data-tab="admin">${icons.user} <span>Akun Admin</span></button>
     </div>
     <button class="tabs-arrow right hide" id="tabArrR" type="button" aria-label="Scroll right">${icons.chevronRight}</button>
@@ -627,13 +627,13 @@ function vSettings(){
     </div>
   </div>
 
-  <!-- Tab 3: Cloudflare Analytics & Credentials -->
-  <div class="tab-pane ${tab==='analytics'?'on':''}" id="pane-analytics">
+  <!-- Tab 3: Cloudflare All-in-One API Token & Credentials -->
+  <div class="tab-pane ${tab==='cloudflare'?'on':''}" id="pane-cloudflare">
     <div class="card set" style="padding:22px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <div>
-          <div style="font-weight:700">Kredensial Akun Cloudflare</div>
-          <div class="id">ID Akun dan API Token untuk analitik atau integrasi client.</div>
+          <div style="font-weight:700">Cloudflare API & Account Credentials (All-in-One)</div>
+          <div class="id">ID Akun dan API Token All-in-One Cloudflare untuk izin dan integrasi.</div>
         </div>
         ${tokenStatusBadge}
       </div>
@@ -644,7 +644,7 @@ function vSettings(){
         <button class="btn sm" id="cpCfAccBtn" type="button">${icons.copy} Copy</button>
       </div>
 
-      <label>Cloudflare API Token (Account Analytics: Read)</label>
+      <label>Cloudflare All-in-One API Token</label>
       <div class="inline" style="position:relative">
         <div class="input-wrap" style="flex:1">
           <input id="setCfTok" type="password" value="${esc(st.cfApiToken || '')}" placeholder="${st.hasCfToken ? '•••••••••••••••• (Tersimpan)' : 'Masukkan Cloudflare API Token'}">
@@ -652,6 +652,13 @@ function vSettings(){
         </div>
         <button class="btn sm" id="cpCfTokBtn" type="button" ${st.cfApiToken ? '' : 'disabled'}>${icons.copy} Copy</button>
       </div>
+      <div class="id" style="margin-top:6px">Kredensial tersimpan di Secret Worker atau KV. Bisa langsung dilihat & disalin untuk aplikasi client.</div>
+
+      <div class="foot" style="margin-top:24px;display:flex;justify-content:flex-end">
+        <button class="btn" id="btnSaveCf" disabled>${icons.save} Save changes</button>
+      </div>
+    </div>
+  </div>
       <div class="id" style="margin-top:6px">ID dan Token ini dapat dilihat & disalin langsung kapan saja tanpa perlu login ulang ke dashboard Cloudflare.</div>
 
       <div class="foot" style="margin-top:24px;display:flex;justify-content:flex-end">

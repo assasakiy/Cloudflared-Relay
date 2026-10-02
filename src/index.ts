@@ -379,21 +379,34 @@ async function ensureBootstrap(kv: KVNamespace, env: Bindings): Promise<AdminRec
     admin = { email: defaultEmail, hash };
     await saveAdmin(kv, admin);
 
-    const settings = await getGlobalSettings(kv);
-    if (!settings.appName) {
-      await saveGlobalSettings(kv, {
-        targetRestrict: false,
-        appName: "Relay Gateway",
-        logoUrl: "",
-        theme: "auto",
-      });
-    }
-
     const targets = await getGlobalTargets(kv);
     if (targets.length === 0) {
       await saveGlobalTargets(kv, ["api.openai.com", "httpbin.org"]);
     }
   }
+
+  const envAccountId = (env.CF_ANALYTICS_ACCOUNT_ID || env.CLOUDFLARE_ACCOUNT_ID || "").trim();
+  const envToken = (env.CF_ANALYTICS_API_TOKEN || env.CLOUDFLARE_API_TOKEN || "").trim();
+  const settings = await getGlobalSettings(kv);
+  let changed = false;
+  if (!settings.appName) {
+    settings.appName = "Relay Gateway";
+    settings.targetRestrict = false;
+    settings.theme = "auto";
+    changed = true;
+  }
+  if (envAccountId && !settings.cfAccountId) {
+    settings.cfAccountId = envAccountId;
+    changed = true;
+  }
+  if (envToken && !settings.cfApiToken) {
+    settings.cfApiToken = envToken;
+    changed = true;
+  }
+  if (changed) {
+    await saveGlobalSettings(kv, settings);
+  }
+
   return admin;
 }
 
