@@ -541,7 +541,7 @@ app.post("/api/clients", async (c) => {
   let rawKey: string | null = null;
 
   if (body.generateKey) {
-    rawKey = "relay_" + randomAlphanumeric(32);
+    rawKey = "relay_" + randomAlphanumeric(16);
     const keyHash = await sha256Hex(rawKey);
     keys.push({
       id: "ak_" + randomAlphanumeric(6),
@@ -623,7 +623,7 @@ app.put("/api/clients/:id", async (c) => {
     for (const k of client.keys) {
       if (k.status === "active") k.status = "revoked";
     }
-    rawKey = "relay_" + randomAlphanumeric(32);
+    rawKey = "relay_" + randomAlphanumeric(16);
     const keyHash = await sha256Hex(rawKey);
     client.keys.push({
       id: "ak_" + randomAlphanumeric(6),

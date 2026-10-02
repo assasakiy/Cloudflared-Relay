@@ -968,14 +968,14 @@ function editDrawer(id){
     g("#boxKey").classList.toggle("hide", !useKey);
     if(useKey && !c.key && !newKeyPlain){
       willGenKey = true;
-      newKeyPlain = "relay_" + rnd(32);
+      newKeyPlain = "relay_" + rnd(16);
       g("#secKey").innerHTML = `<div class="secret-box" style="margin:0"><code>${newKeyPlain}</code></div>`;
     }
     markDirty();
   };
   g("#gk").onclick = () => {
     willGenKey = true;
-    newKeyPlain = "relay_" + rnd(32);
+    newKeyPlain = "relay_" + rnd(16);
     g("#secKey").innerHTML = `<div class="secret-box" style="margin:0"><code>${newKeyPlain}</code></div>`;
     markDirty();
   };
