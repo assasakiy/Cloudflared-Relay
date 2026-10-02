@@ -45,6 +45,7 @@ export interface GlobalSettings {
 
 export interface Bindings {
   RELAY_KV: KVNamespace;
+  ADMIN_INITIAL_EMAIL?: string;
   ADMIN_INITIAL_PASSWORD?: string;
   SESSION_SECRET?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;

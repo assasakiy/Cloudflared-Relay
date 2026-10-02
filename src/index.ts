@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
-import type { Bindings, Client, ApiKeyRecord, SessionRecord } from "./types";
+import type { Bindings, Client, ApiKeyRecord, SessionRecord, AdminRecord } from "./types";
 import {
   sha256Hex,
   randomHex,
@@ -269,9 +269,17 @@ app.get("/", (c) => {
   if (c.req.query("url") || c.req.header("x-relay-target")) {
     return handleRelay(c);
   }
+  if (c.executionCtx) {
+    c.executionCtx.waitUntil(ensureBootstrap(c.env.RELAY_KV, c.env));
+  }
   return c.html(dashboardHtml);
 });
-app.get("/login", (c) => c.html(dashboardHtml));
+app.get("/login", (c) => {
+  if (c.executionCtx) {
+    c.executionCtx.waitUntil(ensureBootstrap(c.env.RELAY_KV, c.env));
+  }
+  return c.html(dashboardHtml);
+});
 app.get("/dashboard", (c) => c.html(dashboardHtml));
 app.get("/dashboard/*", (c) => c.html(dashboardHtml));
 app.get("/clients", (c) => c.html(dashboardHtml));
@@ -304,13 +312,40 @@ app.use("/api/*", async (c, next) => {
 
 // --- Auth APIs ---
 
+async function ensureBootstrap(kv: KVNamespace, env: Bindings): Promise<AdminRecord> {
+  let admin = await getAdmin(kv);
+  if (!admin) {
+    const defaultEmail = (env.ADMIN_INITIAL_EMAIL || "admin@example.com").trim().toLowerCase();
+    const defaultPass = env.ADMIN_INITIAL_PASSWORD || "AdminSuperSecret123!";
+    const hash = await hashAdminPassword(defaultPass);
+    admin = { email: defaultEmail, hash };
+    await saveAdmin(kv, admin);
+
+    const settings = await getGlobalSettings(kv);
+    if (!settings.appName) {
+      await saveGlobalSettings(kv, {
+        targetRestrict: false,
+        appName: "Relay Gateway",
+        logoUrl: "",
+        theme: "auto",
+      });
+    }
+
+    const targets = await getGlobalTargets(kv);
+    if (targets.length === 0) {
+      await saveGlobalTargets(kv, ["api.openai.com", "httpbin.org"]);
+    }
+  }
+  return admin;
+}
+
 interface LoginBody {
   email?: string;
   password?: string;
 }
 
 app.get("/api/auth/status", async (c) => {
-  const admin = await getAdmin(c.env.RELAY_KV);
+  const admin = await ensureBootstrap(c.env.RELAY_KV, c.env);
   const token = getCookie(c, "relay_session");
   let loggedIn = false;
   let email: string | null = null;
@@ -322,7 +357,7 @@ app.get("/api/auth/status", async (c) => {
     }
   }
   return c.json({
-    configured: !!admin || !!c.env.ADMIN_INITIAL_PASSWORD,
+    configured: true,
     loggedIn,
     email,
   });
@@ -338,17 +373,7 @@ app.post("/api/auth/login", async (c) => {
   }
 
   const kv = c.env.RELAY_KV;
-  let admin = await getAdmin(kv);
-
-  if (!admin && c.env.ADMIN_INITIAL_PASSWORD) {
-    const hash = await hashAdminPassword(c.env.ADMIN_INITIAL_PASSWORD);
-    admin = { email: "admin@example.com", hash };
-    await saveAdmin(kv, admin);
-  }
-
-  if (!admin) {
-    return c.json({ error: "admin_not_configured" }, 403);
-  }
+  const admin = await ensureBootstrap(kv, c.env);
 
   if (admin.email !== email) {
     return c.json({ error: "invalid_credentials" }, 401);
