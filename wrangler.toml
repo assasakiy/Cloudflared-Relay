@@ -1,0 +1,15 @@
+name = "cloudflare-relay"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+
+[observability]
+enabled = true
+
+[[kv_namespaces]]
+binding = "RELAY_KV"
+id = "c7535a5b65fe4c129982816c675a8268"
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true

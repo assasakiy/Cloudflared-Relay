@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Relay Gateway Dashboard</title>
+<link rel="icon" id="dynamicFavicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b5bfd' stroke-width='2.2'><path d='M4 12h12M12 6l6 6-6 6'/></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f6;--card:#fff;--ink:#141c2b;--mute:#6a7488;--line:#dfe4ec;--side:#151d36;--side-ink:#aab3cc;--acc:#3b5bfd;--acc-s:#e6ebff;--ok:#12805c;--ok-s:#dcf5ea;--bad:#c43a3a;--bad-s:#fde5e5;--warn:#9a6700;--warn-s:#fff1cc;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1220;--card:#161d30;--ink:#e8ecf6;--mute:#8d97b0;--line:#26304a;--side:#0a0f1c;--acc:#7f95ff;--acc-s:#222c55;--ok:#4ed1a1;--ok-s:#123a2e;--bad:#ff8585;--bad-s:#431c22;--warn:#f2c14e;--warn-s:#3b2f10}}
+:root[data-theme="dark"]{--bg:#0d1220;--card:#161d30;--ink:#e8ecf6;--mute:#8d97b0;--line:#26304a;--side:#0a0f1c;--acc:#7f95ff;--acc-s:#222c55;--ok:#4ed1a1;--ok-s:#123a2e;--bad:#ff8585;--bad-s:#431c22;--warn:#f2c14e;--warn-s:#3b2f10}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+body.modal-open{overflow:hidden!important;touch-action:none}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.hide{display:none!important}
+
+/* Login Card */
+#login{min-height:100vh;display:grid;place-items:center;padding:20px}
+.lcard{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:32px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;letter-spacing:-.02em}
+.logo-img{width:30px;height:30px;border-radius:8px;object-fit:contain}
+.mark{width:32px;height:32px;border-radius:9px;background:var(--acc);display:grid;place-items:center;color:#fff;flex:none}
+.mark.has-logo{background:transparent!important}
+.mark svg{width:18px;height:18px}
+.lcard h1{font-size:22px;margin:24px 0 4px;letter-spacing:-.02em}
+.lcard p{margin:0 0 20px;color:var(--mute)}
+label{display:block;font-weight:600;font-size:13px;margin:14px 0 6px}
+input[type=text],input[type=email],input[type=password],select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);box-sizing:border-box}
+.input-wrap{position:relative;display:flex;align-items:center}
+.input-wrap input{padding-right:40px}
+.input-wrap .btn-eye{position:absolute;right:8px;border:0;background:none;color:var(--mute);padding:6px;display:grid;place-items:center}
+
+/* Buttons & Icons */
+.btn{border:0;border-radius:10px;padding:9px 15px;font-weight:600;background:var(--acc);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:.15s;font-size:13px}
+.btn svg{width:16px;height:16px;flex:none}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{background:rgba(0,0,0,.04)}
+.btn.danger{background:var(--bad-s);color:var(--bad)}
+.btn.sm{padding:6px 10px;font-size:12px;border-radius:8px}
+.btn.sm svg{width:14px;height:14px}
+.btn.icon-only{padding:7px;border-radius:8px}
+.btn.square-btn{width:38px;height:38px;min-height:38px;max-height:38px;padding:0;display:inline-flex;align-items:center;justify-content:center;flex:none;border-radius:10px;aspect-ratio:1/1}
+.btn.square-btn svg{width:18px;height:18px}
+.btn.full{width:100%;margin-top:20px}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin .8s linear infinite}
+
+/* App Shell */
+#app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+aside{background:var(--side);color:var(--side-ink);padding:22px 14px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+aside .logo{color:#fff;padding:0 8px 18px}
+.nav{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:0;background:none;color:inherit;font-weight:600;text-align:left;width:100%}
+.nav svg{width:18px;height:18px;flex:none}
+.nav:hover{background:rgba(255,255,255,.06)}
+.nav.on{background:var(--acc);color:#fff}
+.spacer{flex:1}
+main{padding:28px;max-width:1100px;width:100%;box-sizing:border-box}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+h2{margin:0;font-size:24px;letter-spacing:-.03em}
+.sub{color:var(--mute);margin:2px 0 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-sizing:border-box}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.kpi{padding:16px}
+.kpi b{display:block;font-size:26px;letter-spacing:-.03em}
+.kpi span{color:var(--mute);font-size:13px}
+
+/* Client Table */
+.row{display:grid;grid-template-columns:2fr 2fr 1.2fr 1fr auto;gap:12px;align-items:center;padding:14px 18px;border-top:1px solid var(--line)}
+.row.head{border-top:0;color:var(--mute);font-weight:600;font-size:13px}
+.name{font-weight:700}
+.id{color:var(--mute);font-size:12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{padding:3px 9px;border-radius:99px;background:var(--acc-s);color:var(--acc);font-weight:600;font-size:12px;display:inline-flex;align-items:center;gap:4px}
+.chip.logic{background:var(--warn-s);color:var(--warn)}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-weight:600;font-size:12px}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.badge.on{background:var(--ok-s);color:var(--ok)}.badge.off{background:var(--line);color:var(--mute)}
+.acts{display:flex;gap:6px;align-items:center}
+.empty{padding:40px 18px;text-align:center;color:var(--mute)}
+
+/* Target rows */
+.trow{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--line);gap:10px}
+.addbar{display:flex;gap:8px;padding:16px 18px}
+.addbar input{flex:1}
+
+/* Toggle Switch (Swift) */
+.toggle{position:relative;width:44px;height:24px;flex:none}
+.toggle input{opacity:0;position:absolute;inset:0;margin:0;cursor:pointer;z-index:1}
+.toggle i{position:absolute;inset:0;background:var(--line);border-radius:99px;transition:.15s}
+.toggle i::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.15s}
+.toggle input:checked+i{background:var(--acc)}.toggle input:checked+i::after{left:23px}
+.toggle input:focus-visible+i{outline:2px solid var(--acc);outline-offset:2px}
+
+/* Drawers - Z-INDEX 1000 ensures popup is NEVER covered by mobile header */
+.scrim{position:fixed;inset:0;background:rgba(10,14,28,.55);display:flex;justify-content:flex-end;z-index:1000;animation:fade .15s}
+.drawer{background:var(--card);width:100%;max-width:520px;height:100%;display:flex;flex-direction:column;box-shadow:-10px 0 36px rgba(0,0,0,.25);animation:slide .2s ease-out}
+.drawer-head{padding:18px 24px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex:none}
+.drawer-head h2{margin:0;font-size:19px}
+.drawer-body{flex:1;overflow-y:auto;padding:20px 24px}
+.drawer-foot{padding:14px 24px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--card);display:flex;gap:10px;justify-content:flex-end;flex:none;position:sticky;bottom:0;z-index:5}
+@keyframes slide{from{transform:translateX(30px);opacity:0}}@keyframes fade{from{opacity:0}}
+
+.seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px}
+.seg button{border:0;background:none;padding:6px 14px;border-radius:8px;font-weight:600;font-size:12.5px;color:var(--mute);display:inline-flex;align-items:center;gap:6px}
+.seg button svg{width:15px;height:15px}
+.seg button.on{background:var(--acc);color:#fff}
+.opt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;font-weight:600}
+.sub-box{margin:-2px 0 10px;padding:12px;background:var(--bg);border-radius:10px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:3px 4px 3px 9px;font-size:13px}
+.tag button{border:0;background:none;color:var(--mute);font-size:16px;line-height:1;padding:0 4px}
+.inline{display:flex;gap:8px;align-items:center}
+.secret-box{background:var(--warn-s);color:var(--warn);padding:8px 12px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.secret-box code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;word-break:break-all}
+.url-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px}
+.url-card .title{font-size:12px;font-weight:700;color:var(--acc);margin-bottom:4px}
+.url-card .desc{font-size:11.5px;color:var(--mute);margin-bottom:8px}
+
+/* Settings Tabs Bar & Scroll Arrows */
+.tabs-nav-wrap{position:relative;display:flex;align-items:center;margin-bottom:20px;width:100%;max-width:100%;box-sizing:border-box}
+.tabs{display:flex;border-bottom:1px solid var(--line);gap:4px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;scroll-behavior:smooth;width:100%;box-sizing:border-box;padding:0 2px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{border:0;background:none;padding:8px 14px;font-weight:600;font-size:13px;color:var(--mute);border-bottom:2px solid transparent;display:inline-flex;align-items:center;gap:6px;border-radius:8px 8px 0 0;white-space:nowrap;flex:none}
+.tab svg{width:15px;height:15px;flex:none}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--acc);border-bottom-color:var(--acc);background:var(--bg)}
+.tabs-arrow{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:var(--card);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;z-index:5;color:var(--ink);cursor:pointer;transition:opacity .15s;padding:0}
+.tabs-arrow svg{width:14px;height:14px}
+.tabs-arrow.left{left:0}
+.tabs-arrow.right{right:0}
+.tabs-arrow.hide{display:none!important}
+.tab-pane{display:none}
+.tab-pane.on{display:block}
+
+/* Analytics Graph & Logs Table */
+.chart-box{padding:20px;margin-top:16px;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden}
+.chart-scroll-wrap{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding-bottom:8px;box-sizing:border-box}
+.chart-scroll-wrap::-webkit-scrollbar{height:4px}
+.chart-scroll-wrap::-webkit-scrollbar-track{background:transparent}
+.chart-scroll-wrap::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+.chart-bars{display:flex;align-items:flex-end;gap:6px;height:180px;padding-top:24px;min-width:580px;box-sizing:border-box}
+.bar-col{flex:1;min-width:16px;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;position:relative}
+.bar-fill{width:100%;max-width:24px;border-radius:4px 4px 0 0;background:var(--acc);min-height:0;transition:height .3s}
+.bar-fill.err{background:var(--bad)}
+.bar-time{font-size:10px;color:var(--mute);margin-top:6px;writing-mode:vertical-rl;transform:rotate(180deg)}
+.tooltip{position:absolute;top:-26px;background:var(--ink);color:var(--bg);padding:3px 6px;border-radius:4px;font-size:10px;white-space:nowrap;opacity:0;pointer-events:none;transition:.15s;z-index:20}
+.bar-col:hover .tooltip{opacity:1}
+
+.log-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.log-table{width:100%;border-collapse:collapse;font-size:13px;min-width:620px}
+.log-table th{padding:12px 16px;text-align:left;color:var(--mute);font-weight:600;font-size:12px;border-bottom:1px solid var(--line);background:var(--bg)}
+.log-table td{padding:12px 16px;border-top:1px solid var(--line);vertical-align:middle}
+
+#toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:2000;opacity:0;pointer-events:none;transition:.2s}
+#toast.show{opacity:1}
+.note{padding:14px 18px;color:var(--mute);border-top:1px solid var(--line)}
+.note a{color:var(--acc)}
+
+/* Mobile Responsive */
+.mbar{display:none}
+@media (max-width:860px){
+#app{grid-template-columns:1fr;overflow-x:hidden}
+.mbar{display:flex;align-items:center;justify-content:space-between;position:fixed;top:0;left:0;right:0;height:56px;min-height:56px;max-height:56px;box-sizing:border-box;z-index:50;background:var(--bg);padding:0 16px;padding-top:env(safe-area-inset-top,0px);border-bottom:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+aside{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;flex-direction:row;gap:0;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));z-index:50}
+aside .logo,.spacer,.nav.out{display:none}
+.nav{flex:1;flex-direction:column;justify-content:center;gap:3px;font-size:11px;padding:8px 4px;text-align:center;min-height:52px}
+main{padding:calc(56px + 16px + env(safe-area-inset-top,0px)) 12px 140px;width:100%;max-width:100%;box-sizing:border-box;overflow-x:hidden}
+.kpis{grid-template-columns:repeat(2,1fr);gap:10px}
+.row.head{display:none}
+.row{grid-template-columns:1fr auto;grid-template-areas:"n s" "c c" "t t" "a a";gap:10px;background:var(--card);border:1px solid var(--line)!important;border-radius:14px;margin-bottom:10px}
+.row>:nth-child(1){grid-area:n}.row>:nth-child(2){grid-area:c}.row>:nth-child(3){grid-area:t;font-size:13px}.row>:nth-child(4){grid-area:s;justify-self:end}.row>:nth-child(5){grid-area:a;justify-self:end}
+.acts{display:flex;justify-content:flex-end;align-items:center;gap:8px;width:100%}
+.drawer{max-width:none;width:100%;height:100%;max-height:100vh;border-radius:0!important}
+.set{padding:16px 12px!important}
+.set .two{grid-template-columns:1fr!important;gap:12px}
+.chart-box{padding:16px 12px!important}
+.chart-bars{gap:4px;min-width:520px;height:160px;padding-top:20px}
+.bar-fill{max-width:16px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- Hidden by default: no flicker/clipback when reloading while logged in -->
+<section id="login" class="hide">
+  <div class="lcard">
+    <div class="logo"><div class="mark" id="lMark"></div><span id="lName">Relay Gateway</span></div>
+    <h1>Admin login</h1>
+    <p>Masuk untuk mengelola client dan akses relay.</p>
+    <label for="em">Email</label><input id="em" type="email" placeholder="admin@example.com" autocomplete="username">
+    <label for="pw">Password</label><input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="btn full" id="go"></button>
+  </div>
+</section>
+
+<div id="app" class="hide">
+  <header class="mbar">
+    <div class="logo"><div class="mark" id="mMark"></div><span id="mName">Relay Gateway</span></div>
+    <button class="btn ghost sm icon-only" id="mOut" type="button" title="Log out" aria-label="Log out"></button>
+  </header>
+  <aside>
+    <div class="logo"><div class="mark" id="sMark"></div><span id="sName">Relay Gateway</span></div>
+    <button class="nav on" data-v="clients" id="navClients"></button>
+    <button class="nav" data-v="targets" id="navTargets"></button>
+    <button class="nav" data-v="logs" id="navLogs"></button>
+    <button class="nav" data-v="settings" id="navSettings"></button>
+    <div class="spacer"></div>
+    <button class="nav out" id="out"></button>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const rnd=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>"abcdefghijkmnpqrstuvwxyz23456789"[b%32]).join("");
+
+const vault = window.secretVault = window.secretVault || {};
+
+function getViewFromPath() {
+  const p = window.location.pathname.toLowerCase();
+  if (p.includes("logs") || p.includes("analytics")) return "logs";
+  if (p.includes("targets")) return "targets";
+  if (p.includes("settings")) return "settings";
+  return "clients";
+}
+
+const state={
+  view: getViewFromPath(),
+  settingsTab: "branding",
+  clients: [],
+  global: [],
+  settings: { appName:"Relay Gateway", logoUrl:"", theme:"auto", targetRestrict:false, adminEmail:"", cfAccountId:"", hasCfToken:false, cfTokenSource:"none" },
+  analytics: { configured:true, totalRequests:0, totalErrors:0, avgDurationMs:0, successRate:"100.0", hourly:[], logs:[] }
+};
+
+// --- Modern SVG Icons ---
+const icons={
+  relay:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h12M12 6l6 6-6 6"/></svg>`,
+  clients:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.8a3.5 3.5 0 010 6.4M21.5 20c-.3-2.4-1.4-4-3.2-4.8"/></svg>`,
+  targets:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>`,
+  logs:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
+  analytics:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>`,
+  settings:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>`,
+  logout:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/></svg>`,
+  view:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  edit:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  power:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 11-12.73 0M12 2v10"/></svg>`,
+  save:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`,
+  delete:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>`,
+  copy:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`,
+  rotate:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 11-.57-8.38l5.67-5.67"/></svg>`,
+  close:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  plus:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  spinner:`<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9" stroke-opacity=".2"/><path d="M12 3a9 9 0 019 9" stroke-linecap="round"/></svg>`,
+  eye:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  palette:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.5-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16c3.3 0 6-2.7 6-6 0-5.5-4.5-10-10-10z"/></svg>`,
+  shield:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+  cloud:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>`,
+  user:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+  refresh:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>`,
+  monitor:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+  sun:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
+  moon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`,
+  chevronLeft:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>`,
+  chevronRight:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`
+};
+
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),2400)}
+
+async function copyText(text, msg = "Tersalin ke clipboard!") {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(msg);
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+    toast(msg);
+  }
+}
+
+async function api(path,opts={}){
+  opts.headers={"Content-Type":"application/json",...(opts.headers||{})};
+  if(opts.body&&typeof opts.body!=="string")opts.body=JSON.stringify(opts.body);
+  const res=await fetch(path,opts);
+  if(res.status===401&&!path.startsWith("/api/auth/login")){
+    showLogin();
+    throw new Error("Unauthorized");
+  }
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(data.error||"Request failed");
+  return data;
+}
+
+function showLogin(){ $("#login").classList.remove("hide"); $("#app").classList.add("hide"); }
+function showApp(){ $("#login").classList.add("hide"); $("#app").classList.remove("hide"); }
+
+function applyBranding(){
+  const name = state.settings.appName || "Relay Gateway";
+  document.title = name;
+  $("#lName").textContent = name;
+  $("#mName").textContent = name;
+  $("#sName").textContent = name;
+
+  const logo = state.settings.logoUrl;
+  const marks = [$("#lMark"), $("#mMark"), $("#sMark")];
+  marks.forEach(m => {
+    if(!m) return;
+    if(logo){
+      m.classList.add("has-logo");
+      m.innerHTML = `<img src="${esc(logo)}" class="logo-img" alt="logo">`;
+    }else{
+      m.classList.remove("has-logo");
+      m.innerHTML = icons.relay;
+    }
+  });
+
+  const favicon = $("#dynamicFavicon");
+  if(favicon){
+    if(logo){
+      favicon.href = logo;
+    }else{
+      favicon.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b5bfd' stroke-width='2.2'><path d='M4 12h12M12 6l6 6-6 6'/></svg>";
+    }
+  }
+}
+
+async function syncAll(){
+  try{
+    const [clients,targets,settings]=await Promise.all([
+      api("/api/clients"),
+      api("/api/targets"),
+      api("/api/settings")
+    ]);
+    state.clients=clients;
+    state.global=targets;
+    state.settings=settings;
+    applyBranding();
+    
+    if(state.view==="logs" || state.view==="analytics") await loadAnalytics();
+
+    render();
+  }catch(err){
+    toast("Gagal memuat: "+err.message);
+  }
+}
+
+async function loadAnalytics(){
+  try{
+    state.analytics = await api("/api/analytics");
+  }catch(e){
+    state.analytics = { configured: false, error: e.message, logs: [] };
+  }
+}
+
+async function navigate(view, updateUrl = true){
+  state.view = view;
+  if(updateUrl){
+    window.history.pushState({ view }, "", "/dashboard/" + view);
+  }
+  if(view === "logs" || view === "analytics") await loadAnalytics();
+  render();
+}
+
+window.addEventListener("popstate", async () => {
+  state.view = getViewFromPath();
+  if(state.view === "logs" || state.view === "analytics") await loadAnalytics();
+  render();
+});
+
+function render(){
+  document.querySelectorAll(".nav[data-v]").forEach(b=>b.classList.toggle("on",b.dataset.v===state.view));
+  $("#main").innerHTML=({clients:vClients,targets:vTargets,logs:vLogs,analytics:vLogs,settings:vSettings})[state.view]();
+  if(state.view==="settings"){
+    setTimeout(updateTabArrows, 50);
+  }
+  if(state.view==="logs" || state.view==="analytics"){
+    setTimeout(() => {
+      const cw = $(".chart-scroll-wrap");
+      if(cw) cw.scrollLeft = cw.scrollWidth;
+    }, 50);
+  }
+  window.scrollTo(0,0);
+}
+
+// --- View: Clients ---
+function vClients(){
+  const a=state.clients.filter(c=>c.status).length;
+  const rows=state.clients.map(c=>{
+    const m=[];
+    if(c.ips&&c.ips.length) m.push(`<span class="chip">IP (${c.ips.length})</span>`);
+    if(c.pass) m.push(`<span class="chip">Password</span>`);
+    if(c.key) m.push(`<span class="chip">API Key</span>`);
+    const chipHtml = m.join("") || '<span class="id">None</span>';
+
+    return `<div class="row">
+     <div><div class="name">${esc(c.name)}</div><div class="id">${c.id}</div></div>
+     <div class="chips">${chipHtml}${m.length>1?`<span class="chip logic">${c.logic}</span>`:""}</div>
+     <div>${c.restrict?(c.targets?c.targets.length:0)+" targets":'<span class="id">Global</span>'}</div>
+     <div><span class="badge ${c.status?"on":"off"}">${c.status?"Active":"Disabled"}</span></div>
+     <div class="acts">
+       <button class="btn ghost sm icon-only" data-view="${c.id}" title="View Credentials & URLs" aria-label="View">${icons.view}</button>
+       <button class="btn ghost sm icon-only" data-edit="${c.id}" title="Edit Client" aria-label="Edit">${icons.edit}</button>
+       <button class="btn danger sm icon-only" data-del="${c.id}" title="Delete Client" aria-label="Delete">${icons.delete}</button>
+     </div></div>`;
+  }).join("");
+
+  return `<div class="top">
+    <div><h2>Clients</h2><p class="sub">Kelola client, autentikasi, dan aturan relay.</p></div>
+    <button class="btn addc" data-edit="new">${icons.plus} Add client</button>
+  </div>
+  <div class="kpis">
+   <div class="card kpi"><b>${state.clients.length}</b><span>Clients</span></div>
+   <div class="card kpi"><b>${a}</b><span>Active</span></div>
+   <div class="card kpi"><b>${state.clients.reduce((n,c)=>n+(c.ips?c.ips.length:0),0)}</b><span>Whitelisted IPs</span></div>
+   <div class="card kpi"><b>${state.global.length}</b><span>Global targets</span></div></div>
+  <div class="card">
+    <div class="row head"><div>Name</div><div>Access</div><div>Targets</div><div>Status</div><div style="text-align:right">Actions</div></div>
+    ${rows||'<div class="empty">Belum ada client. Klik Add client untuk membuat yang pertama.</div>'}
+    <div class="note">Statistik dan log request realtime dapat dipantau di menu <a href="#" onclick="event.preventDefault();navigate('logs');">Logs</a>.</div>
+  </div>`;
+}
+
+// --- View: Targets ---
+function vTargets(){
+  return `<div class="top"><div><h2>Target whitelist</h2><p class="sub">Tujuan upstream yang diizinkan relay.</p></div></div>
+  <div class="card">
+    <div class="addbar"><input id="nt" type="text" placeholder="api.openai.com" aria-label="Target host"><button class="btn" id="addT">${icons.plus} Add target</button></div>
+    ${state.global.map((t,i)=>`<div class="trow"><span>${esc(t)}</span><button class="btn danger sm icon-only" data-rt="${i}" title="Remove target" aria-label="Remove">${icons.delete}</button></div>`).join("")||'<div class="empty">Daftar kosong. Tambahkan domain tujuan di atas.</div>'}
+  </div>`;
+}
+
+// --- View: Logs ---
+function vLogs(){
+  const an = state.analytics;
+  const logs = an.logs || [];
+
+  let errorBanner = "";
+  if(an.error){
+    errorBanner = `<div class="card" style="padding:16px 20px;border:1px solid var(--bad);background:var(--bad-s);margin-bottom:18px">
+      <div style="font-weight:700;color:var(--bad);margin-bottom:4px">Koneksi Cloudflare API Bermasalah</div>
+      <div style="font-size:13px;color:var(--bad);margin-bottom:12px">${esc(an.error)}</div>
+      <button class="btn danger sm" id="goAnalyticsSet">${icons.settings} Periksa Pengaturan Token</button>
+    </div>`;
+  }
+
+  const hourly = an.hourly || [];
+  const maxReq = Math.max(...hourly.map(h => h.requests), 5);
+  
+  const barsHtml = hourly.length ? hourly.map(h => {
+    const pct = h.requests > 0 ? Math.min(100, Math.max(8, Math.round((h.requests / maxReq) * 100))) : 0;
+    const timeStr = h.hour ? new Date(h.hour).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "";
+    return `<div class="bar-col">
+      <div class="tooltip">${timeStr}: ${h.requests} req (${h.errors} err)</div>
+      <div class="bar-fill ${h.errors > 0 ? 'err' : ''}" style="height:${pct}%"></div>
+      <span class="bar-time">${timeStr}</span>
+    </div>`;
+  }).join("") : `<div class="empty" style="width:100%">Belum ada aktivitas tercatat dalam 24 jam terakhir.</div>`;
+
+  // Render Log Table Rows
+  const logRows = logs.length ? logs.map(l => {
+    const time = new Date(l.timestamp).toLocaleTimeString();
+    const isOk = l.status >= 200 && l.status < 400;
+    const statusBadge = isOk
+      ? `<span class="badge on">${l.status}</span>`
+      : `<span class="badge" style="background:var(--bad-s);color:var(--bad)">${l.status}</span>`;
+    
+    return `<tr>
+      <td style="color:var(--mute);white-space:nowrap">${time}</td>
+      <td style="font-weight:600">${esc(l.clientName || l.clientId)}</td>
+      <td><span class="chip" style="font-weight:700;font-size:11px">${esc(l.method)}</span></td>
+      <td>
+        <span style="font-weight:600">${esc(l.targetHost)}</span>
+        <span class="id" style="display:block;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.targetPath)}</span>
+      </td>
+      <td>${statusBadge}</td>
+      <td style="text-align:right;white-space:nowrap;color:var(--mute)">${l.durationMs}ms</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="6" class="empty">Belum ada request relay yang tercatat. Kirim request pertama melalui endpoint relay untuk melihat log di sini.</td></tr>`;
+
+  return `<div class="top">
+    <div><h2>Request Logs</h2><p class="sub">Aktivitas dan riwayat request relay secara realtime.</p></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn ghost sm" id="refreshAn">${icons.refresh} Refresh</button>
+    </div>
+  </div>
+  ${errorBanner}
+  <div class="kpis">
+   <div class="card kpi"><b>${(an.totalRequests||0).toLocaleString()}</b><span>Total Requests</span></div>
+   <div class="card kpi"><b style="color:var(--ok)">${an.successRate||"100.0"}%</b><span>Success Rate</span></div>
+   <div class="card kpi"><b style="color:${(an.totalErrors||0)>0?'var(--bad)':'inherit'}">${(an.totalErrors||0).toLocaleString()}</b><span>Errors</span></div>
+   <div class="card kpi"><b>${an.avgDurationMs ? an.avgDurationMs + 'ms' : '0ms'}</b><span>Avg Duration</span></div>
+  </div>
+  <div class="card chart-box">
+    <div style="font-weight:700;margin-bottom:4px">Trafik Relay per Jam (24 Jam)</div>
+    <div style="font-size:12px;color:var(--mute)">Grafik visual akumulasi request relay yang tercatat</div>
+    <div class="chart-scroll-wrap">
+      <div class="chart-bars">${barsHtml}</div>
+    </div>
+  </div>
+  
+  <!-- Live Request Logs Section -->
+  <div class="card" style="margin-top:20px;overflow:hidden">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:700;font-size:15px">Live Request Logs</div>
+        <div style="font-size:12px;color:var(--mute)">Riwayat request relay: metode, target host/path, status, dan latensi</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="chip" style="background:var(--ok-s);color:var(--ok);font-size:11px">${logs.length} Log</span>
+        ${logs.length ? `<button class="btn danger sm icon-only" id="clearLogsBtn" title="Hapus semua log" aria-label="Hapus log">${icons.delete}</button>` : ''}
+      </div>
+    </div>
+    <div class="log-table-wrap">
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Client</th>
+            <th>Method</th>
+            <th>Target URL</th>
+            <th>Status</th>
+            <th style="text-align:right">Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${logRows}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// --- View: Settings (with Tabs) ---
+function vSettings(){
+  const tab = state.settingsTab || "branding";
+  const st = state.settings;
+  const th = st.theme || "auto";
+
+  let tokenStatusBadge = `<span class="badge off">Belum Dikonfigurasi</span>`;
+  if(st.hasCfToken){
+    tokenStatusBadge = st.cfTokenSource === "dashboard"
+      ? `<span class="badge on">Terhubung (Dashboard)</span>`
+      : `<span class="badge on">Terhubung (Environment)</span>`;
+  }
+
+  return `<div class="top"><div><h2>Settings</h2><p class="sub">Pengaturan aplikasi, keamanan, dan integrasi.</p></div></div>
+  <div class="tabs-nav-wrap">
+    <button class="tabs-arrow left hide" id="tabArrL" type="button" aria-label="Scroll left">${icons.chevronLeft}</button>
+    <div class="tabs" id="settingsTabs">
+      <button class="tab ${tab==='branding'?'on':''}" data-tab="branding">${icons.palette} <span>Branding & Tampilan</span></button>
+      <button class="tab ${tab==='relay'?'on':''}" data-tab="relay">${icons.shield} <span>Relay & Keamanan</span></button>
+      <button class="tab ${tab==='analytics'?'on':''}" data-tab="analytics">${icons.cloud} <span>Cloudflare Analytics</span></button>
+      <button class="tab ${tab==='admin'?'on':''}" data-tab="admin">${icons.user} <span>Akun Admin</span></button>
+    </div>
+    <button class="tabs-arrow right hide" id="tabArrR" type="button" aria-label="Scroll right">${icons.chevronRight}</button>
+  </div>
+
+  <!-- Tab 1: Branding -->
+  <div class="tab-pane ${tab==='branding'?'on':''}" id="pane-branding">
+    <div class="card set" style="padding:22px">
+      <label style="margin-top:0">App Name</label>
+      <input id="setAppName" type="text" value="${esc(st.appName)}" placeholder="Relay Gateway">
+      
+      <label>Logo / Favicon URL</label>
+      <input id="setLogoUrl" type="text" value="${esc(st.logoUrl)}" placeholder="https://example.com/logo.png (Opsional)">
+      
+      <label>Theme</label>
+      <div class="seg" id="themeSeg">
+        <button type="button" data-t="auto" class="${th==='auto'?'on':''}">${icons.monitor} <span>System</span></button>
+        <button type="button" data-t="light" class="${th==='light'?'on':''}">${icons.sun} <span>Light</span></button>
+        <button type="button" data-t="dark" class="${th==='dark'?'on':''}">${icons.moon} <span>Dark</span></button>
+      </div>
+
+      <div class="foot" style="margin-top:24px;display:flex;justify-content:flex-end">
+        <button class="btn" id="btnSaveBranding" disabled>${icons.save} Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 2: Relay & Security -->
+  <div class="tab-pane ${tab==='relay'?'on':''}" id="pane-relay">
+    <div class="card set" style="padding:22px">
+      <div class="opt">
+        <div>
+          <div>Global Target Restriction</div>
+          <div class="id">Hanya izinkan relay ke domain di Target Whitelist jika client tidak memiliki target khusus.</div>
+        </div>
+        <span class="toggle"><input type="checkbox" id="setGtr" ${st.targetRestrict?'checked':''}><i></i></span>
+      </div>
+
+      <div class="foot" style="margin-top:24px;display:flex;justify-content:flex-end">
+        <button class="btn" id="btnSaveRelay" disabled>${icons.save} Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 3: Cloudflare Analytics -->
+  <div class="tab-pane ${tab==='analytics'?'on':''}" id="pane-analytics">
+    <div class="card set" style="padding:22px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-weight:700">Status Koneksi Analytics</div>
+        ${tokenStatusBadge}
+      </div>
+      
+      <label style="margin-top:0">Cloudflare Account ID</label>
+      <input id="setCfAcc" type="text" value="${esc(st.cfAccountId)}" placeholder="1bf97d398f0943f1b45454d47d644c6d">
+
+      <label>Cloudflare API Token (Account Analytics: Read)</label>
+      <div class="input-wrap">
+        <input id="setCfTok" type="password" placeholder="${st.hasCfToken ? '•••••••••••••••• (Tersimpan)' : 'Masukkan Cloudflare API Token'}">
+        <button class="btn-eye" id="toggleTokEye" type="button" aria-label="Toggle token">${icons.eye}</button>
+      </div>
+      <div class="id" style="margin-top:6px">Prioritas: Token di sini akan menimpa token dari Environment variable jika diisi.</div>
+
+      <div class="foot" style="margin-top:24px;display:flex;justify-content:flex-end">
+        <button class="btn" id="btnSaveCf" disabled>${icons.save} Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 4: Admin Account -->
+  <div class="tab-pane ${tab==='admin'?'on':''}" id="pane-admin">
+    <div class="card set" style="padding:22px">
+      <div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <label style="margin-top:0">Admin email</label>
+          <input id="setAdminEmail" type="email" value="${esc(st.adminEmail)}">
+        </div>
+        <div>
+          <label style="margin-top:0">New password</label>
+          <input id="setAdminPass" type="password" placeholder="Minimal 12 karakter (kosongkan jika tidak ganti)">
+        </div>
+      </div>
+
+      <div class="foot" style="margin-top:24px;display:flex;justify-content:space-between;align-items:center">
+        <button class="btn danger" id="out2">${icons.logout} Log out</button>
+        <button class="btn" id="btnSaveAdmin" disabled>${icons.save} Save changes</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function updateTabArrows(){
+  const el = $("#settingsTabs");
+  const arrL = $("#tabArrL");
+  const arrR = $("#tabArrR");
+  if(!el || !arrL || !arrR) return;
+  const canL = el.scrollLeft > 4;
+  const canR = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+  arrL.classList.toggle("hide", !canL);
+  arrR.classList.toggle("hide", !canR);
+}
+
+// --- Action View Drawer (Modal Khusus Copy Kredensial & URL) ---
+function viewDrawer(id){
+  const c = state.clients.find(x => x.id === id);
+  if(!c) return;
+
+  const origin = window.location.origin;
+  const rawKey = vault[c.id]?.key || c.key;
+  const rawPass = vault[c.id]?.pass || null;
+
+  // Path Prefix URL
+  const pathUrl = (c.pass && !c.key)
+    ? `${origin}/p/${rawPass || 'password123'}`
+    : `${origin}/${rawKey || 'relay_key'}`;
+
+  // Query Param URL
+  const queryUrl = (c.pass && !c.key)
+    ? `${origin}/?pass=${rawPass || 'password123'}`
+    : `${origin}/?key=${rawKey || 'relay_key'}`;
+
+  // Snippet Header
+  const targetExample = (c.targets && c.targets.length) ? ("https://" + c.targets[0]) : "https://api.openai.com";
+  let hdrSnippet = `POST / HTTP/1.1\nx-relay-target: ${targetExample}\nx-relay-path: /v1/chat/completions\n`;
+  if(c.key) hdrSnippet += `x-relay-api-key: ${rawKey || 'relay_key'}\n`;
+  if(c.pass) hdrSnippet += `x-relay-password: ${rawPass || '••••••••'}\n`;
+  hdrSnippet += `Authorization: Bearer <upstream_token_anda>`;
+
+  const el = document.createElement("div");
+  el.className = "scrim";
+  document.body.appendChild(el);
+  document.body.classList.add("modal-open");
+
+  const close = () => {
+    document.body.classList.remove("modal-open");
+    el.remove();
+  };
+  el.addEventListener("click", e => { if(e.target === el) close(); });
+
+  el.innerHTML = `<div class="drawer" role="dialog" aria-label="View Client">
+    <div class="drawer-head">
+      <div>
+        <h2 style="font-size:18px">${esc(c.name)}</h2>
+        <div class="id">${c.id} • ${c.status ? '<span style="color:var(--ok)">Active</span>' : '<span style="color:var(--mute)">Disabled</span>'}</div>
+      </div>
+      <button class="btn ghost sm icon-only" id="vwClose" type="button" aria-label="Close">${icons.close}</button>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Credentials -->
+      <div style="font-weight:700;margin-bottom:8px">Kredensial Client</div>
+      
+      ${c.key ? `<div class="url-card">
+        <div class="title">API Key</div>
+        <div class="inline">
+          <input type="text" readonly id="vwKeyVal" value="${esc(rawKey || (c.key + '••••••••••'))}">
+          <button class="btn sm" id="cpKeyBtn" type="button">${icons.copy} Copy</button>
+        </div>
+      </div>` : ''}
+
+      ${c.pass ? `<div class="url-card">
+        <div class="title">Password</div>
+        <div class="inline">
+          <input type="text" readonly id="vwPassVal" value="${esc(rawPass || '•••••••• (Tersimpan sebagai hash)')}">
+          <button class="btn sm" id="cpPassBtn" type="button" ${rawPass ? '' : 'disabled'}>${icons.copy} Copy</button>
+        </div>
+        ${rawPass ? '' : '<div class="id" style="margin-top:4px">Gunakan Reset Password di menu Edit jika Anda ingin mengganti password baru.</div>'}
+      </div>` : ''}
+
+      ${!c.key && !c.pass ? `<div class="id" style="margin-bottom:12px">Client ini menggunakan autentikasi <b>IP Whitelist</b> saja.</div>` : ''}
+
+      <!-- Format URLs -->
+      <div class="url-card" style="margin-top:14px">
+        <div class="title">Format 1: Path Prefix (Rekomendasi Base URL)</div>
+        <div class="desc">Cukup tempelkan ke kolom Base URL / API URL aplikasi client Anda. Subpath diteruskan otomatis.</div>
+        <div class="inline">
+          <input type="text" readonly id="vwFmt1" value="${esc(pathUrl)}">
+          <button class="btn sm" id="cpFmt1Btn" type="button">${icons.copy} Copy</button>
+        </div>
+      </div>
+
+      <div class="url-card">
+        <div class="title">Format 2: Query Parameter (?key=... atau ?pass=...)</div>
+        <div class="desc">Bisa dipakai jika aplikasi client mempertahankan query string URL saat request.</div>
+        <div class="inline">
+          <input type="text" readonly id="vwFmt2" value="${esc(queryUrl)}">
+          <button class="btn sm" id="cpFmt2Btn" type="button">${icons.copy} Copy</button>
+        </div>
+      </div>
+
+      <!-- Header snippet -->
+      <div class="url-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div class="title" style="margin:0">Opsi Alternatif: Kirim via HTTP Header</div>
+          <button class="btn ghost sm" id="cpHdrBtn" type="button">${icons.copy} Copy</button>
+        </div>
+        <pre style="margin:0;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--ink);background:var(--bg);border:1px solid var(--line);padding:10px;border-radius:8px;overflow-x:auto">${esc(hdrSnippet)}</pre>
+      </div>
+    </div>
+
+    <div class="drawer-foot">
+      <button class="btn ghost" id="vwFootClose" type="button">${icons.close} Tutup</button>
+    </div>
+  </div>`;
+
+  const g = s => $(s, el);
+  g("#vwClose").onclick = close;
+  g("#vwFootClose").onclick = close;
+
+  if(g("#cpKeyBtn")) g("#cpKeyBtn").onclick = () => copyText(rawKey || c.key, "API Key disalin!");
+  if(g("#cpPassBtn") && rawPass) g("#cpPassBtn").onclick = () => copyText(rawPass, "Password disalin!");
+  g("#cpFmt1Btn").onclick = () => copyText(pathUrl, "Base URL (Path Prefix) disalin!");
+  g("#cpFmt2Btn").onclick = () => copyText(queryUrl, "URL (Query Param) disalin!");
+  g("#cpHdrBtn").onclick = () => copyText(hdrSnippet, "Header snippet disalin!");
+}
+
+// --- Edit / Create Drawer ---
+function editDrawer(id){
+  const isNew = id === "new";
+  const c = isNew
+    ? { id: "new", name: "", status: true, logic: "ANY", ips: [], pass: false, key: null, restrict: false, targets: [] }
+    : JSON.parse(JSON.stringify(state.clients.find(x => x.id === id)));
+
+  let willGenPass = false, willGenKey = false;
+  let newPassPlain = null, newKeyPlain = null;
+  let useIp = (c.ips && c.ips.length > 0) || isNew;
+  let usePass = !!c.pass;
+  let useKey = !!c.key;
+  let isDirty = false;
+
+  const el = document.createElement("div");
+  el.className = "scrim";
+  document.body.appendChild(el);
+  document.body.classList.add("modal-open");
+
+  const close = () => {
+    document.body.classList.remove("modal-open");
+    el.remove();
+  };
+  el.addEventListener("click", e => { if(e.target === el) close(); });
+
+  function tagsHtml(arr, k){
+    return (arr || []).map((v, i) => `<span class="tag">${esc(v)}<button data-x="${k}:${i}" aria-label="Remove ${esc(v)}">×</button></span>`).join("");
+  }
+
+  el.innerHTML = `<div class="drawer" role="dialog" aria-label="Client form">
+    <div class="drawer-head">
+      <h2>${isNew ? "Add client" : "Edit " + esc(c.name)}</h2>
+      <button class="btn ghost sm icon-only" id="edClose" type="button" aria-label="Close">${icons.close}</button>
+    </div>
+
+    <div class="drawer-body">
+      <label for="cn">Client Name</label>
+      <input id="cn" type="text" value="${esc(c.name)}" placeholder="Client Name">
+
+      <label>Access methods</label>
+
+      <!-- IP Whitelist (Swift Toggle) -->
+      <div class="opt">
+        <span>IP whitelist</span>
+        <span class="toggle"><input type="checkbox" id="mi" ${useIp ? 'checked' : ''}><i></i></span>
+      </div>
+      <div class="sub-box ${useIp ? '' : 'hide'}" id="boxIp">
+        <div class="inline">
+          <input id="ip" type="text" placeholder="195.88.211.70">
+          <button class="btn sm square-btn" id="addIp" type="button" title="Add IP" aria-label="Add IP">${icons.plus}</button>
+        </div>
+        <div class="tags" id="listIp">${tagsHtml(c.ips, "ip")}</div>
+      </div>
+
+      <!-- Password (Swift Toggle & Inline Rotate) -->
+      <div class="opt">
+        <span>Password</span>
+        <span class="toggle"><input type="checkbox" id="mp" ${usePass ? 'checked' : ''}><i></i></span>
+      </div>
+      <div class="sub-box ${usePass ? '' : 'hide'}" id="boxPass">
+        <div class="inline" style="justify-content:space-between;align-items:center;width:100%">
+          <div id="secPass" style="flex:1;min-width:0">
+            ${c.pass ? '<div class="id">Password aktif tersimpan sebagai hash.</div>' : ''}
+          </div>
+          <button class="btn ghost sm" id="gp" type="button" style="flex:none" title="Rotate Password">${icons.rotate} <span>Rotate</span></button>
+        </div>
+      </div>
+
+      <!-- API Key (Swift Toggle & Inline Rotate) -->
+      <div class="opt">
+        <span>API key</span>
+        <span class="toggle"><input type="checkbox" id="mk" ${useKey ? 'checked' : ''}><i></i></span>
+      </div>
+      <div class="sub-box ${useKey ? '' : 'hide'}" id="boxKey">
+        <div class="inline" style="justify-content:space-between;align-items:center;width:100%">
+          <div id="secKey" style="flex:1;min-width:0">
+            ${c.key ? `<div class="secret-box" style="background:var(--bg);color:var(--mute);margin:0"><code>${esc(c.key)}••••••••••</code></div>` : ''}
+          </div>
+          <button class="btn ghost sm" id="gk" type="button" style="flex:none" title="Rotate API Key">${icons.rotate} <span>Rotate</span></button>
+        </div>
+      </div>
+
+      <!-- Auth Logic (Buttons on Left, Text on Right) -->
+      <label>Authentication logic</label>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="seg" id="lg" style="flex:none">
+          <button type="button" data-l="ANY" class="${c.logic === "ANY" ? "on" : ""}">ANY</button>
+          <button type="button" data-l="ALL" class="${c.logic === "ALL" ? "on" : ""}">ALL</button>
+        </div>
+        <div class="id" id="logicDesc" style="margin:0;flex:1">${c.logic === "ANY" ? "Salah satu metode valid sudah cukup." : "Semua metode yang aktif harus valid."}</div>
+      </div>
+
+      <!-- Target Restriction (Swift Toggle) -->
+      <label>Target restriction</label>
+      <div class="opt">
+        <span>Batasi target untuk client ini</span>
+        <span class="toggle"><input type="checkbox" id="tr" ${c.restrict ? 'checked' : ''}><i></i></span>
+      </div>
+      <div class="sub-box ${c.restrict ? '' : 'hide'}" id="boxTarget">
+        <div class="inline">
+          <input id="tg" type="text" placeholder="api.xkiro.com">
+          <button class="btn sm square-btn" id="addTg" type="button" title="Add Target" aria-label="Add Target">${icons.plus}</button>
+        </div>
+        <div class="tags" id="listTg">${tagsHtml(c.targets, "tg")}</div>
+      </div>
+
+      <!-- Status Active (Swift Toggle) -->
+      <div class="opt" style="margin-top:14px">
+        <span>Active</span>
+        <span class="toggle"><input type="checkbox" id="st" ${c.status ? 'checked' : ''}><i></i></span>
+      </div>
+    </div>
+
+    <div class="drawer-foot">
+      ${isNew ? '' : `<button class="btn danger" id="dl" type="button">${icons.delete} Delete</button>`}
+      <button class="btn" id="sv" type="button" disabled>${icons.save} <span id="svText">${isNew ? "Create client" : "Save changes"}</span></button>
+    </div>
+  </div>`;
+
+  const g = s => $(s, el);
+  const markDirty = () => {
+    isDirty = true;
+    g("#sv").disabled = false;
+  };
+
+  g("#cn").oninput = e => { c.name = e.target.value; markDirty(); };
+  g("#edClose").onclick = close;
+
+  // Toggle IP
+  g("#mi").onchange = e => {
+    useIp = e.target.checked;
+    g("#boxIp").classList.toggle("hide", !useIp);
+    markDirty();
+  };
+  g("#addIp").onclick = () => {
+    const v = g("#ip").value.trim();
+    if(v && !c.ips.includes(v)){
+      c.ips.push(v);
+      g("#ip").value = "";
+      g("#listIp").innerHTML = tagsHtml(c.ips, "ip");
+      bindTagRemoves();
+      markDirty();
+    }
+  };
+  g("#ip").onkeydown = e => { if(e.key === "Enter"){ e.preventDefault(); g("#addIp").click(); } };
+
+  // Toggle Password (AUTO-GENERATE saat switch ON)
+  g("#mp").onchange = e => {
+    usePass = e.target.checked;
+    g("#boxPass").classList.toggle("hide", !usePass);
+    if(usePass && !c.pass && !newPassPlain){
+      willGenPass = true;
+      newPassPlain = rnd(20);
+      g("#secPass").innerHTML = `<div class="secret-box" style="margin:0"><code>${newPassPlain}</code></div>`;
+    }
+    markDirty();
+  };
+  g("#gp").onclick = () => {
+    willGenPass = true;
+    newPassPlain = rnd(20);
+    g("#secPass").innerHTML = `<div class="secret-box" style="margin:0"><code>${newPassPlain}</code></div>`;
+    markDirty();
+  };
+
+  // Toggle API Key (AUTO-GENERATE saat switch ON)
+  g("#mk").onchange = e => {
+    useKey = e.target.checked;
+    g("#boxKey").classList.toggle("hide", !useKey);
+    if(useKey && !c.key && !newKeyPlain){
+      willGenKey = true;
+      newKeyPlain = "relay_" + rnd(32);
+      g("#secKey").innerHTML = `<div class="secret-box" style="margin:0"><code>${newKeyPlain}</code></div>`;
+    }
+    markDirty();
+  };
+  g("#gk").onclick = () => {
+    willGenKey = true;
+    newKeyPlain = "relay_" + rnd(32);
+    g("#secKey").innerHTML = `<div class="secret-box" style="margin:0"><code>${newKeyPlain}</code></div>`;
+    markDirty();
+  };
+
+  // Auth Logic buttons
+  el.querySelectorAll("[data-l]").forEach(b => b.onclick = () => {
+    c.logic = b.dataset.l;
+    el.querySelectorAll("[data-l]").forEach(x => x.classList.toggle("on", x === b));
+    g("#logicDesc").textContent = (c.logic === "ANY" ? "Salah satu metode valid sudah cukup." : "Semua metode yang aktif harus valid.");
+    markDirty();
+  });
+
+  // Toggle Target Restriction
+  g("#tr").onchange = e => {
+    c.restrict = e.target.checked;
+    g("#boxTarget").classList.toggle("hide", !c.restrict);
+    markDirty();
+  };
+  g("#addTg").onclick = () => {
+    const v = g("#tg").value.trim().toLowerCase();
+    if(v && !c.targets.includes(v)){
+      c.targets.push(v);
+      g("#tg").value = "";
+      g("#listTg").innerHTML = tagsHtml(c.targets, "tg");
+      bindTagRemoves();
+      markDirty();
+    }
+  };
+  g("#tg").onkeydown = e => { if(e.key === "Enter"){ e.preventDefault(); g("#addTg").click(); } };
+
+  // Toggle Status
+  g("#st").onchange = e => { c.status = e.target.checked; markDirty(); };
+
+  function bindTagRemoves(){
+    el.querySelectorAll("[data-x]").forEach(b => b.onclick = () => {
+      const [k, i] = b.dataset.x.split(":");
+      if(k === "ip"){
+        c.ips.splice(+i, 1);
+        g("#listIp").innerHTML = tagsHtml(c.ips, "ip");
+      }else{
+        c.targets.splice(+i, 1);
+        g("#listTg").innerHTML = tagsHtml(c.targets, "tg");
+      }
+      bindTagRemoves();
+      markDirty();
+    });
+  }
+  bindTagRemoves();
+
+  // Delete
+  if(g("#dl")){
+    g("#dl").onclick = async () => {
+      if(confirm(`Hapus client "${c.name}"?`)){
+        try{
+          await api("/api/clients/" + c.id, { method: "DELETE" });
+          delete vault[c.id];
+          state.clients = state.clients.filter(x => x.id !== c.id);
+          close();
+          render();
+          toast("Client deleted");
+        }catch(err){ toast("Gagal: " + err.message); }
+      }
+    };
+  }
+
+  // Save (with Spinner and Loading State)
+  g("#sv").onclick = async () => {
+    if(!c.name.trim()){ toast("Isi nama client dulu"); g("#cn").focus(); return; }
+
+    const svBtn = g("#sv");
+    const origHtml = svBtn.innerHTML;
+    svBtn.disabled = true;
+    svBtn.innerHTML = `${icons.spinner} <span>Menyimpan...</span>`;
+
+    const payload = {
+      name: c.name.trim(),
+      status: c.status,
+      logic: c.logic,
+      ips: useIp ? c.ips : [],
+      restrict: c.restrict,
+      targets: c.restrict ? c.targets : []
+    };
+    if(newPassPlain) payload.newPassword = newPassPlain;
+    else if(!usePass && c.pass) payload.removePassword = true;
+    if(willGenKey) payload.generateKey = true;
+
+    try{
+      let res;
+      if(isNew){
+        res = await api("/api/clients", { method: "POST", body: payload });
+        state.clients.push(res.client);
+      }else{
+        res = await api("/api/clients/" + c.id, { method: "PUT", body: payload });
+        state.clients = state.clients.map(x => x.id === c.id ? res.client : x);
+      }
+
+      vault[res.client.id] = vault[res.client.id] || {};
+      if(res.rawKey) vault[res.client.id].key = res.rawKey;
+      if(res.rawPassword) vault[res.client.id].pass = res.rawPassword;
+
+      close();
+      render();
+      toast(isNew ? "Client created" : "Client saved");
+      
+      if(res.rawKey || res.rawPassword){
+        viewDrawer(res.client.id);
+      }
+    }catch(err){
+      svBtn.disabled = false;
+      svBtn.innerHTML = origHtml;
+      toast("Gagal simpan: " + err.message);
+    }
+  };
+
+  g("#cn").focus();
+}
+
+// Global Click Handlers
+document.addEventListener("click", async e => {
+  const t = e.target.closest("button");
+  if(!t) return;
+
+  // Navigations
+  if(t.dataset.v){
+    navigate(t.dataset.v);
+  }
+  // Action View
+  else if(t.dataset.view) viewDrawer(t.dataset.view);
+  // Edit Client
+  else if(t.dataset.edit) editDrawer(t.dataset.edit);
+  // Delete Client directly from row
+  else if(t.dataset.del){
+    const cid = t.dataset.del;
+    const c = state.clients.find(x => x.id === cid);
+    if(c && confirm(`Hapus client "${c.name}"?`)){
+      try{
+        await api("/api/clients/" + c.id, { method: "DELETE" });
+        delete vault[c.id];
+        state.clients = state.clients.filter(x => x.id !== c.id);
+        render();
+        toast("Client deleted");
+      }catch(err){ toast("Gagal: " + err.message); }
+    }
+  }
+  // Remove Target
+  else if(t.dataset.rt){
+    const target = state.global[+t.dataset.rt];
+    try{
+      await api("/api/targets/" + encodeURIComponent(target), { method: "DELETE" });
+      state.global.splice(+t.dataset.rt, 1);
+      render();
+      toast("Target removed");
+    }catch(err){ toast("Gagal: " + err.message); }
+  }
+  // Add Target
+  else if(t.id === "addT"){
+    const v = $("#nt").value.trim().toLowerCase();
+    if(v){
+      try{
+        const updated = await api("/api/targets", { method: "POST", body: { target: v } });
+        state.global = updated;
+        render();
+        toast("Target added");
+      }catch(err){ toast("Gagal: " + err.message); }
+    }
+  }
+  // Refresh Analytics
+  else if(t.id === "refreshAn"){
+    const btn = t;
+    btn.disabled = true;
+    btn.innerHTML = `${icons.spinner} Loading...`;
+    await loadAnalytics();
+    render();
+    toast("Analytics diperbarui");
+  }
+  // Clear Logs
+  else if(t.closest("#clearLogsBtn")){
+    if(confirm("Hapus semua log request relay?")){
+      try{
+        await api("/api/analytics/logs", { method: "DELETE" });
+        await loadAnalytics();
+        render();
+        toast("Log request berhasil dibersihkan");
+      }catch(err){ toast("Gagal: " + err.message); }
+    }
+  }
+  // Go to Analytics Settings shortcut
+  else if(t.id === "goAnalyticsSet"){
+    state.settingsTab = "analytics";
+    navigate("settings");
+  }
+  // Settings Tab switches
+  else if(t.dataset.tab){
+    state.settingsTab = t.dataset.tab;
+    render();
+  }
+  // Settings Tab scroll arrows
+  else if(t.id === "tabArrL"){
+    const el = $("#settingsTabs");
+    if(el) el.scrollBy({ left: -140, behavior: "smooth" });
+  }
+  else if(t.id === "tabArrR"){
+    const el = $("#settingsTabs");
+    if(el) el.scrollBy({ left: 140, behavior: "smooth" });
+  }
+  // Theme button switches in Tab 1
+  else if(t.dataset.t){
+    const th = t.dataset.t;
+    state.settings.theme = th;
+    localStorage.setItem("relay_theme", th);
+    document.documentElement.dataset.theme = th === "auto" ? "" : th;
+    t.parentNode.querySelectorAll("button").forEach(b => b.classList.toggle("on", b === t));
+    const btn = $("#btnSaveBranding");
+    if(btn) btn.disabled = false;
+  }
+  // Toggle password eye
+  else if(t.id === "toggleTokEye"){
+    const inp = $("#setCfTok");
+    if(inp.type === "password"){
+      inp.type = "text";
+      t.style.color = "var(--acc)";
+    }else{
+      inp.type = "password";
+      t.style.color = "var(--mute)";
+    }
+  }
+  // Save Settings: Branding
+  else if(t.id === "btnSaveBranding"){
+    saveSettingsTab(t, {
+      appName: $("#setAppName").value.trim(),
+      logoUrl: $("#setLogoUrl").value.trim(),
+      theme: state.settings.theme
+    });
+  }
+  // Save Settings: Relay
+  else if(t.id === "btnSaveRelay"){
+    saveSettingsTab(t, {
+      targetRestrict: $("#setGtr").checked
+    });
+  }
+  // Save Settings: Analytics
+  else if(t.id === "btnSaveCf"){
+    const payload = { cfAccountId: $("#setCfAcc").value.trim() };
+    const tok = $("#setCfTok").value.trim();
+    if(tok) payload.cfApiToken = tok;
+    saveSettingsTab(t, payload);
+  }
+  // Save Settings: Admin
+  else if(t.id === "btnSaveAdmin"){
+    const payload = { adminEmail: $("#setAdminEmail").value.trim() };
+    const p = $("#setAdminPass").value;
+    if(p){
+      if(p.length < 12) return toast("Password minimal 12 karakter");
+      payload.newPassword = p;
+    }
+    saveSettingsTab(t, payload);
+  }
+});
+
+// Settings tabs scroll listener
+document.addEventListener("scroll", e => {
+  if(e.target && e.target.id === "settingsTabs"){
+    updateTabArrows();
+  }
+}, true);
+window.addEventListener("resize", updateTabArrows);
+
+// Helper Save Settings per Tab with Spinner
+async function saveSettingsTab(btn, payload){
+  const origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `${icons.spinner} <span>Menyimpan...</span>`;
+  try{
+    const res = await api("/api/settings", { method: "POST", body: payload });
+    state.settings = { ...state.settings, ...res };
+    applyBranding();
+    toast("Pengaturan disimpan!");
+    render();
+  }catch(err){
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
+    toast("Gagal simpan: " + err.message);
+  }
+}
+
+// Dirty Check Handlers for Settings Inputs
+document.addEventListener("input", e => {
+  const id = e.target.id;
+  if(id === "setAppName" || id === "setLogoUrl"){
+    const b = $("#btnSaveBranding"); if(b) b.disabled = false;
+  } else if(id === "setGtr"){
+    const b = $("#btnSaveRelay"); if(b) b.disabled = false;
+  } else if(id === "setCfAcc" || id === "setCfTok"){
+    const b = $("#btnSaveCf"); if(b) b.disabled = false;
+  } else if(id === "setAdminEmail" || id === "setAdminPass"){
+    const b = $("#btnSaveAdmin"); if(b) b.disabled = false;
+  }
+});
+
+// Auth Handlers
+$("#go").innerHTML = `${icons.relay} <span>Log in</span>`;
+$("#go").onclick = async () => {
+  const email = $("#em").value.trim();
+  const password = $("#pw").value;
+  if(!email || !password) return toast("Isi email dan password");
+
+  const btn = $("#go");
+  btn.disabled = true;
+  btn.innerHTML = `${icons.spinner} <span>Logging in...</span>`;
+
+  try{
+    await api("/api/auth/login", { method: "POST", body: { email, password } });
+    showApp();
+    await syncAll();
+    toast("Login berhasil");
+  }catch(err){
+    toast("Login gagal: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `${icons.relay} <span>Log in</span>`;
+  }
+};
+$("#pw").addEventListener("keydown", e => { if(e.key === "Enter") $("#go").click(); });
+
+const logout = async () => {
+  try{ await api("/api/auth/logout", { method: "POST" }); }catch{}
+  showLogin();
+  toast("Logged out");
+};
+$("#out").innerHTML = `${icons.logout} <span class="l">Log out</span>`;
+$("#out").onclick = logout;
+$("#mOut").innerHTML = icons.logout;
+$("#mOut").onclick = logout;
+document.addEventListener("click", e => { if(e.target.closest("#out2")) logout(); });
+
+// Set Navigation Labels with Icons
+$("#navClients").innerHTML = `${icons.clients} <span>Clients</span>`;
+$("#navTargets").innerHTML = `${icons.targets} <span>Targets</span>`;
+$("#navLogs").innerHTML = `${icons.logs} <span>Logs</span>`;
+$("#navSettings").innerHTML = `${icons.settings} <span>Settings</span>`;
+
+// Boot
+const savedTheme = localStorage.getItem("relay_theme") || "auto";
+if(savedTheme !== "auto") document.documentElement.dataset.theme = savedTheme;
+
+(async()=>{
+  try{
+    const st = await api("/api/auth/status");
+    if(st.loggedIn){
+      showApp();
+      await syncAll();
+    }else{
+      showLogin();
+    }
+  }catch{
+    showLogin();
+  }
+})();
+</script>
+</body>
+</html>
