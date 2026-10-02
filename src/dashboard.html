@@ -310,17 +310,30 @@ function showLogin(updateUrl = true){
   $("#login").classList.remove("hide");
   $("#app").classList.add("hide");
   if(updateUrl && window.location.pathname !== "/login"){
-    window.history.pushState({ view: "login" }, "", "/login");
+    window.location.href = "/login";
   }
 }
 function showApp(){ $("#login").classList.add("hide"); $("#app").classList.remove("hide"); }
 
+function setFavicon(url){
+  let link = document.querySelector("link[rel*='icon']");
+  if(!link){
+    link = document.createElement("link");
+    link.rel = "icon";
+    document.head.appendChild(link);
+  }
+  const newLink = link.cloneNode(true);
+  newLink.id = "dynamicFavicon";
+  newLink.href = url;
+  if(link.parentNode) link.parentNode.replaceChild(newLink, link);
+}
+
 function applyBranding(){
   const name = state.settings.appName || "Relay Gateway";
   document.title = name;
-  $("#lName").textContent = name;
-  $("#mName").textContent = name;
-  $("#sName").textContent = name;
+  const lName = $("#lName"); if(lName) lName.textContent = name;
+  const mName = $("#mName"); if(mName) mName.textContent = name;
+  const sName = $("#sName"); if(sName) sName.textContent = name;
 
   const logo = state.settings.logoUrl;
   const marks = [$("#lMark"), $("#mMark"), $("#sMark")];
@@ -335,14 +348,8 @@ function applyBranding(){
     }
   });
 
-  const favicon = $("#dynamicFavicon");
-  if(favicon){
-    if(logo){
-      favicon.href = logo;
-    }else{
-      favicon.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b5bfd' stroke-width='2.2'><path d='M4 12h12M12 6l6 6-6 6'/></svg>";
-    }
-  }
+  const faviconUrl = logo || "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b5bfd' stroke-width='2.2'><path d='M4 12h12M12 6l6 6-6 6'/></svg>";
+  setFavicon(faviconUrl);
 }
 
 async function syncAll(){
@@ -1281,11 +1288,7 @@ $("#go").onclick = async () => {
 
   try{
     await api("/api/auth/login", { method: "POST", body: { email, password } });
-    showApp();
-    state.view = "clients";
-    window.history.pushState({ view: "clients" }, "", "/dashboard/clients");
-    await syncAll();
-    toast("Login berhasil");
+    window.location.href = "/dashboard/clients";
   }catch(err){
     toast("Login gagal: " + err.message);
   } finally {
@@ -1297,8 +1300,7 @@ $("#pw").addEventListener("keydown", e => { if(e.key === "Enter") $("#go").click
 
 const logout = async () => {
   try{ await api("/api/auth/logout", { method: "POST" }); }catch{}
-  showLogin(true);
-  toast("Logged out");
+  window.location.href = "/login";
 };
 $("#out").innerHTML = `${icons.logout} <span class="l">Log out</span>`;
 $("#out").onclick = logout;
@@ -1311,6 +1313,11 @@ $("#navClients").innerHTML = `${icons.clients} <span>Clients</span>`;
 $("#navTargets").innerHTML = `${icons.targets} <span>Targets</span>`;
 $("#navLogs").innerHTML = `${icons.logs} <span>Logs</span>`;
 $("#navSettings").innerHTML = `${icons.settings} <span>Settings</span>`;
+
+// If directly on /login, display login card immediately without wait
+if(window.location.pathname === "/login"){
+  $("#login").classList.remove("hide");
+}
 
 // Boot
 const savedTheme = localStorage.getItem("relay_theme") || "auto";
@@ -1329,17 +1336,25 @@ if(savedTheme !== "auto") document.documentElement.dataset.theme = savedTheme;
     if(st.loggedIn){
       showApp();
       if(window.location.pathname === "/login" || window.location.pathname === "/"){
-        navigate("clients", true);
-      } else {
-        state.view = getViewFromPath();
-        render();
+        window.location.href = "/dashboard/clients";
+        return;
       }
+      state.view = getViewFromPath();
+      render();
       await syncAll();
     }else{
-      showLogin(window.location.pathname !== "/login");
+      if(window.location.pathname !== "/login"){
+        window.location.href = "/login";
+      }else{
+        showLogin(false);
+      }
     }
   }catch{
-    showLogin(window.location.pathname !== "/login");
+    if(window.location.pathname !== "/login"){
+      window.location.href = "/login";
+    }else{
+      showLogin(false);
+    }
   }
 })();
 </script>

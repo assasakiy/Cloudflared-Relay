@@ -262,9 +262,37 @@ async function handleRelay(c: Context<Env>) {
   }
 }
 
+// --- Server-Side Dashboard Rendering with Baked-in Branding ---
+
+function escapeHtml(s: string): string {
+  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+async function getRenderedDashboard(kv: KVNamespace): Promise<string> {
+  const settings = await getGlobalSettings(kv);
+  const name = settings.appName || "Relay Gateway";
+  const logo = settings.logoUrl || "";
+  const favicon = logo || "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b5bfd' stroke-width='2.2'><path d='M4 12h12M12 6l6 6-6 6'/></svg>";
+
+  let html = dashboardHtml;
+  html = html.replace("<title>Relay Gateway Dashboard</title>", `<title>${escapeHtml(name)}</title>`);
+  html = html.replace(/<link rel="icon" id="dynamicFavicon" href="[^"]*">/, `<link rel="icon" id="dynamicFavicon" href="${escapeHtml(favicon)}">`);
+
+  if (logo) {
+    html = html.replace('<div class="mark" id="lMark"></div>', `<div class="mark has-logo" id="lMark"><img src="${escapeHtml(logo)}" class="logo-img" alt="logo"></div>`);
+    html = html.replace('<div class="mark" id="mMark"></div>', `<div class="mark has-logo" id="mMark"><img src="${escapeHtml(logo)}" class="logo-img" alt="logo"></div>`);
+    html = html.replace('<div class="mark" id="sMark"></div>', `<div class="mark has-logo" id="sMark"><img src="${escapeHtml(logo)}" class="logo-img" alt="logo"></div>`);
+  }
+  html = html.replace(/<span id="lName">Relay Gateway<\/span>/g, `<span id="lName">${escapeHtml(name)}</span>`);
+  html = html.replace(/<span id="mName">Relay Gateway<\/span>/g, `<span id="mName">${escapeHtml(name)}</span>`);
+  html = html.replace(/<span id="sName">Relay Gateway<\/span>/g, `<span id="sName">${escapeHtml(name)}</span>`);
+
+  return html;
+}
+
 // --- Static Dashboard & Page Routing ---
 
-app.get("/", (c) => {
+app.get("/", async (c) => {
   // Jika ada query param relay url, forward ke relay
   if (c.req.query("url") || c.req.header("x-relay-target")) {
     return handleRelay(c);
@@ -272,21 +300,51 @@ app.get("/", (c) => {
   if (c.executionCtx) {
     c.executionCtx.waitUntil(ensureBootstrap(c.env.RELAY_KV, c.env));
   }
-  return c.html(dashboardHtml);
+  const token = getCookie(c, "relay_session");
+  if (token) {
+    const session = await getSession(c.env.RELAY_KV, token);
+    if (session) {
+      return c.redirect("/dashboard/clients");
+    }
+  }
+  return c.redirect("/login");
 });
-app.get("/login", (c) => {
+
+app.get("/login", async (c) => {
   if (c.executionCtx) {
     c.executionCtx.waitUntil(ensureBootstrap(c.env.RELAY_KV, c.env));
   }
-  return c.html(dashboardHtml);
+  const token = getCookie(c, "relay_session");
+  if (token) {
+    const session = await getSession(c.env.RELAY_KV, token);
+    if (session) {
+      return c.redirect("/dashboard/clients");
+    }
+  }
+  const html = await getRenderedDashboard(c.env.RELAY_KV);
+  return c.html(html);
 });
-app.get("/dashboard", (c) => c.html(dashboardHtml));
-app.get("/dashboard/*", (c) => c.html(dashboardHtml));
-app.get("/clients", (c) => c.html(dashboardHtml));
-app.get("/targets", (c) => c.html(dashboardHtml));
-app.get("/logs", (c) => c.html(dashboardHtml));
-app.get("/analytics", (c) => c.html(dashboardHtml));
-app.get("/settings", (c) => c.html(dashboardHtml));
+
+app.get("/dashboard", (c) => c.redirect("/dashboard/clients"));
+
+app.get("/dashboard/*", async (c) => {
+  const token = getCookie(c, "relay_session");
+  if (!token) {
+    return c.redirect("/login");
+  }
+  const session = await getSession(c.env.RELAY_KV, token);
+  if (!session) {
+    return c.redirect("/login");
+  }
+  const html = await getRenderedDashboard(c.env.RELAY_KV);
+  return c.html(html);
+});
+
+app.get("/clients", (c) => c.redirect("/dashboard/clients"));
+app.get("/targets", (c) => c.redirect("/dashboard/targets"));
+app.get("/logs", (c) => c.redirect("/dashboard/logs"));
+app.get("/analytics", (c) => c.redirect("/dashboard/logs"));
+app.get("/settings", (c) => c.redirect("/dashboard/settings"));
 
 // --- Auth Middleware untuk API ---
 
@@ -849,7 +907,7 @@ app.all("*", async (c) => {
   if (method !== "GET" || hasRelayHeaders || hasRelayQuery) {
     return handleRelay(c);
   }
-  return c.html(dashboardHtml);
+  return c.redirect("/login");
 });
 
 export default app;
