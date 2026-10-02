@@ -240,7 +240,7 @@ const state={
   settingsTab: "branding",
   clients: [],
   global: [],
-  settings: { appName:"Relay Gateway", logoUrl:"", theme:"auto", targetRestrict:false, adminEmail:"" },
+  settings: { appName:"Relay Gateway", logoUrl:"", theme:"auto", targetRestrict:false, adminEmail:"", cfAccountId:"", hasCfToken:false, cfTokenSource:"none" },
   analytics: { configured:true, totalRequests:0, totalErrors:0, avgDurationMs:0, successRate:"100.0", hourly:[], logs:[] }
 };
 
@@ -467,6 +467,15 @@ function vLogs(){
   const an = state.analytics;
   const logs = an.logs || [];
 
+  let errorBanner = "";
+  if(an.error){
+    errorBanner = `<div class="card" style="padding:16px 20px;border:1px solid var(--bad);background:var(--bad-s);margin-bottom:18px">
+      <div style="font-weight:700;color:var(--bad);margin-bottom:4px">Koneksi Cloudflare API Bermasalah</div>
+      <div style="font-size:13px;color:var(--bad);margin-bottom:12px">${esc(an.error)}</div>
+      <button class="btn danger sm" id="goAnalyticsSet">${icons.settings} Periksa Pengaturan Token</button>
+    </div>`;
+  }
+
   const hourly = an.hourly || [];
   const maxReq = Math.max(...hourly.map(h => h.requests), 5);
   
@@ -507,6 +516,7 @@ function vLogs(){
       <button class="btn ghost sm" id="refreshAn">${icons.refresh} Refresh</button>
     </div>
   </div>
+  ${errorBanner}
   <div class="kpis">
    <div class="card kpi"><b>${(an.totalRequests||0).toLocaleString()}</b><span>Total Requests</span></div>
    <div class="card kpi"><b style="color:var(--ok)">${an.successRate||"100.0"}%</b><span>Success Rate</span></div>
@@ -559,14 +569,21 @@ function vSettings(){
   const st = state.settings;
   const th = st.theme || "auto";
 
+  let tokenStatusBadge = `<span class="badge off">Belum Dikonfigurasi</span>`;
+  if(st.hasCfToken){
+    tokenStatusBadge = st.cfTokenSource === "dashboard"
+      ? `<span class="badge on">Terhubung (Dashboard)</span>`
+      : `<span class="badge on">Terhubung (Environment)</span>`;
+  }
+
   return `<div class="top"><div><h2>Settings</h2><p class="sub">Pengaturan aplikasi, keamanan, dan integrasi.</p></div></div>
   <div class="tabs-nav-wrap">
     <button class="tabs-arrow left hide" id="tabArrL" type="button" aria-label="Scroll left">${icons.chevronLeft}</button>
     <div class="tabs" id="settingsTabs">
       <button class="tab ${tab==='branding'?'on':''}" data-tab="branding">${icons.palette} <span>Branding & Tampilan</span></button>
       <button class="tab ${tab==='relay'?'on':''}" data-tab="relay">${icons.shield} <span>Relay & Keamanan</span></button>
+      <button class="tab ${tab==='analytics'?'on':''}" data-tab="analytics">${icons.cloud} <span>Cloudflare Analytics</span></button>
       <button class="tab ${tab==='admin'?'on':''}" data-tab="admin">${icons.user} <span>Akun Admin</span></button>
-      <button class="tab ${tab==='system'?'on':''}" data-tab="system">${icons.cloud} <span>Info Gateway</span></button>
     </div>
     <button class="tabs-arrow right hide" id="tabArrR" type="button" aria-label="Scroll right">${icons.chevronRight}</button>
   </div>
@@ -610,7 +627,31 @@ function vSettings(){
     </div>
   </div>
 
-  <!-- Tab 3: Admin Account -->
+  <!-- Tab 3: Cloudflare Analytics -->
+  <div class="tab-pane ${tab==='analytics'?'on':''}" id="pane-analytics">
+    <div class="card set" style="padding:22px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-weight:700">Status Koneksi Analytics</div>
+        ${tokenStatusBadge}
+      </div>
+      
+      <label style="margin-top:0">Cloudflare Account ID</label>
+      <input id="setCfAcc" type="text" value="${esc(st.cfAccountId)}" placeholder="a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6">
+
+      <label>Cloudflare API Token (Account Analytics: Read)</label>
+      <div class="input-wrap">
+        <input id="setCfTok" type="password" placeholder="${st.hasCfToken ? '•••••••••••••••• (Tersimpan)' : 'Masukkan Cloudflare API Token'}">
+        <button class="btn-eye" id="toggleTokEye" type="button" aria-label="Toggle token">${icons.eye}</button>
+      </div>
+      <div class="id" style="margin-top:6px">Prioritas: Token di sini akan menimpa token dari Environment variable jika diisi.</div>
+
+      <div class="foot" style="margin-top:24px;display:flex;justify-content:flex-end">
+        <button class="btn" id="btnSaveCf" disabled>${icons.save} Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 4: Admin Account -->
   <div class="tab-pane ${tab==='admin'?'on':''}" id="pane-admin">
     <div class="card set" style="padding:22px">
       <div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -627,35 +668,6 @@ function vSettings(){
       <div class="foot" style="margin-top:24px;display:flex;justify-content:space-between;align-items:center">
         <button class="btn danger" id="out2">${icons.logout} Log out</button>
         <button class="btn" id="btnSaveAdmin" disabled>${icons.save} Save changes</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tab 4: Gateway Info & System -->
-  <div class="tab-pane ${tab==='system'?'on':''}" id="pane-system">
-    <div class="card set" style="padding:22px">
-      <div style="font-weight:700;font-size:15px;margin-bottom:6px">Informasi Sistem Gateway</div>
-      <div class="id" style="margin-bottom:18px">Gateway ini beroperasi secara mandiri (autonomous) di Cloudflare Workers dengan penyimpanan KV terenkripsi. Tidak membutuhkan API Token Cloudflare tambahan.</div>
-
-      <div class="url-card">
-        <div class="title">Gateway Host & Origin</div>
-        <div class="desc">Domain utama Cloudflare Worker yang melayani relay traffic ini.</div>
-        <div class="inline">
-          <input type="text" readonly value="${window.location.origin}">
-          <button class="btn sm" type="button" onclick="copyText(window.location.origin)">${icons.copy} Copy</button>
-        </div>
-      </div>
-
-      <div class="url-card">
-        <div class="title">Observability & Logs Engine</div>
-        <div class="desc">Menggunakan ring-buffer request log KV internal (retensi 100 request terakhir). Metrik dihitung realtime langsung dari aktivitas relay tanpa bergantung API eksternal.</div>
-        <div style="margin-top:8px"><span class="badge on">Active & Autonomous</span></div>
-      </div>
-
-      <div class="url-card">
-        <div class="title">Client Credentials Management</div>
-        <div class="desc">Semua API Key dan Password tersimpan aman di database KV privat Anda. Anda dapat melihat, menyalin, dan mengelola kredensial client kapan saja melalui menu <b>Clients</b> tanpa perlu masuk ke dashboard Cloudflare.</div>
-        <div style="margin-top:8px"><span class="badge on">Private Encrypted Storage</span></div>
       </div>
     </div>
   </div>`;
@@ -678,8 +690,8 @@ function viewDrawer(id){
   if(!c) return;
 
   const origin = window.location.origin;
-  const rawKey = c.rawKey || c.key || vault[c.id]?.key || "";
-  const rawPass = c.rawPass || c.pass || vault[c.id]?.pass || "";
+  const rawKey = vault[c.id]?.key || c.key;
+  const rawPass = vault[c.id]?.pass || null;
 
   // Path Prefix URL
   const pathUrl = (c.pass && !c.key)
@@ -695,7 +707,7 @@ function viewDrawer(id){
   const targetExample = (c.targets && c.targets.length) ? ("https://" + c.targets[0]) : "https://api.openai.com";
   let hdrSnippet = `POST / HTTP/1.1\nx-relay-target: ${targetExample}\nx-relay-path: /v1/chat/completions\n`;
   if(c.key) hdrSnippet += `x-relay-api-key: ${rawKey || 'relay_key'}\n`;
-  if(c.pass) hdrSnippet += `x-relay-password: ${rawPass || 'password123'}\n`;
+  if(c.pass) hdrSnippet += `x-relay-password: ${rawPass || '••••••••'}\n`;
   hdrSnippet += `Authorization: Bearer <upstream_token_anda>`;
 
   const el = document.createElement("div");
@@ -720,13 +732,12 @@ function viewDrawer(id){
 
     <div class="drawer-body">
       <!-- Credentials -->
-      <div style="font-weight:700;margin-bottom:8px">Kredensial Client & Rahasia</div>
+      <div style="font-weight:700;margin-bottom:8px">Kredensial Client</div>
       
       ${c.key ? `<div class="url-card">
         <div class="title">API Key</div>
         <div class="inline">
-          <input type="password" readonly id="vwKeyVal" value="${esc(rawKey)}">
-          <button class="btn-eye" id="vwToggleKeyEye" type="button" aria-label="Toggle key">${icons.eye}</button>
+          <input type="text" readonly id="vwKeyVal" value="${esc(rawKey || (c.key + '••••••••••'))}">
           <button class="btn sm" id="cpKeyBtn" type="button">${icons.copy} Copy</button>
         </div>
       </div>` : ''}
@@ -734,10 +745,10 @@ function viewDrawer(id){
       ${c.pass ? `<div class="url-card">
         <div class="title">Password</div>
         <div class="inline">
-          <input type="password" readonly id="vwPassVal" value="${esc(rawPass)}">
-          <button class="btn-eye" id="vwTogglePassEye" type="button" aria-label="Toggle password">${icons.eye}</button>
-          <button class="btn sm" id="cpPassBtn" type="button">${icons.copy} Copy</button>
+          <input type="text" readonly id="vwPassVal" value="${esc(rawPass || '•••••••• (Tersimpan sebagai hash)')}">
+          <button class="btn sm" id="cpPassBtn" type="button" ${rawPass ? '' : 'disabled'}>${icons.copy} Copy</button>
         </div>
+        ${rawPass ? '' : '<div class="id" style="margin-top:4px">Gunakan Reset Password di menu Edit jika Anda ingin mengganti password baru.</div>'}
       </div>` : ''}
 
       ${!c.key && !c.pass ? `<div class="id" style="margin-bottom:12px">Client ini menggunakan autentikasi <b>IP Whitelist</b> saja.</div>` : ''}
@@ -745,7 +756,7 @@ function viewDrawer(id){
       <!-- Format URLs -->
       <div class="url-card" style="margin-top:14px">
         <div class="title">Format 1: Path Prefix (Rekomendasi Base URL)</div>
-        <div class="desc">Cukup tempelkan ke kolom Base URL / Proxy URL di 9Router (pilih tipe Cloudflare), Cursor, atau Claude Code.</div>
+        <div class="desc">Cukup tempelkan ke kolom Base URL / API URL aplikasi client Anda. Subpath diteruskan otomatis.</div>
         <div class="inline">
           <input type="text" readonly id="vwFmt1" value="${esc(pathUrl)}">
           <button class="btn sm" id="cpFmt1Btn" type="button">${icons.copy} Copy</button>
@@ -780,26 +791,8 @@ function viewDrawer(id){
   g("#vwClose").onclick = close;
   g("#vwFootClose").onclick = close;
 
-  if(g("#vwToggleKeyEye")){
-    g("#vwToggleKeyEye").onclick = () => {
-      const inp = g("#vwKeyVal");
-      const isPass = inp.type === "password";
-      inp.type = isPass ? "text" : "password";
-      g("#vwToggleKeyEye").style.color = isPass ? "var(--acc)" : "var(--mute)";
-    };
-  }
-
-  if(g("#vwTogglePassEye")){
-    g("#vwTogglePassEye").onclick = () => {
-      const inp = g("#vwPassVal");
-      const isPass = inp.type === "password";
-      inp.type = isPass ? "text" : "password";
-      g("#vwTogglePassEye").style.color = isPass ? "var(--acc)" : "var(--mute)";
-    };
-  }
-
-  if(g("#cpKeyBtn")) g("#cpKeyBtn").onclick = () => copyText(rawKey, "API Key disalin!");
-  if(g("#cpPassBtn")) g("#cpPassBtn").onclick = () => copyText(rawPass, "Password disalin!");
+  if(g("#cpKeyBtn")) g("#cpKeyBtn").onclick = () => copyText(rawKey || c.key, "API Key disalin!");
+  if(g("#cpPassBtn") && rawPass) g("#cpPassBtn").onclick = () => copyText(rawPass, "Password disalin!");
   g("#cpFmt1Btn").onclick = () => copyText(pathUrl, "Base URL (Path Prefix) disalin!");
   g("#cpFmt2Btn").onclick = () => copyText(queryUrl, "URL (Query Param) disalin!");
   g("#cpHdrBtn").onclick = () => copyText(hdrSnippet, "Header snippet disalin!");
@@ -867,7 +860,7 @@ function editDrawer(id){
       <div class="sub-box ${usePass ? '' : 'hide'}" id="boxPass">
         <div class="inline" style="justify-content:space-between;align-items:center;width:100%">
           <div id="secPass" style="flex:1;min-width:0">
-            ${c.rawPass || c.pass ? `<div class="secret-box" style="margin:0"><code>${esc(c.rawPass || c.pass)}</code></div>` : (c.pass ? '<div class="id">Password aktif tersimpan.</div>' : '')}
+            ${c.pass ? '<div class="id">Password aktif tersimpan sebagai hash.</div>' : ''}
           </div>
           <button class="btn ghost sm" id="gp" type="button" style="flex:none" title="Rotate Password">${icons.rotate} <span>Rotate</span></button>
         </div>
@@ -881,7 +874,7 @@ function editDrawer(id){
       <div class="sub-box ${useKey ? '' : 'hide'}" id="boxKey">
         <div class="inline" style="justify-content:space-between;align-items:center;width:100%">
           <div id="secKey" style="flex:1;min-width:0">
-            ${c.rawKey || c.key ? `<div class="secret-box" style="margin:0"><code>${esc(c.rawKey || c.key)}</code></div>` : ''}
+            ${c.key ? `<div class="secret-box" style="background:var(--bg);color:var(--mute);margin:0"><code>${esc(c.key)}••••••••••</code></div>` : ''}
           </div>
           <button class="btn ghost sm" id="gk" type="button" style="flex:none" title="Rotate API Key">${icons.rotate} <span>Rotate</span></button>
         </div>
@@ -1169,6 +1162,11 @@ document.addEventListener("click", async e => {
       }catch(err){ toast("Gagal: " + err.message); }
     }
   }
+  // Go to Analytics Settings shortcut
+  else if(t.id === "goAnalyticsSet"){
+    state.settingsTab = "analytics";
+    navigate("settings");
+  }
   // Settings Tab switches
   else if(t.dataset.tab){
     state.settingsTab = t.dataset.tab;
@@ -1218,6 +1216,13 @@ document.addEventListener("click", async e => {
       targetRestrict: $("#setGtr").checked
     });
   }
+  // Save Settings: Analytics
+  else if(t.id === "btnSaveCf"){
+    const payload = { cfAccountId: $("#setCfAcc").value.trim() };
+    const tok = $("#setCfTok").value.trim();
+    if(tok) payload.cfApiToken = tok;
+    saveSettingsTab(t, payload);
+  }
   // Save Settings: Admin
   else if(t.id === "btnSaveAdmin"){
     const payload = { adminEmail: $("#setAdminEmail").value.trim() };
@@ -1263,6 +1268,8 @@ document.addEventListener("input", e => {
     const b = $("#btnSaveBranding"); if(b) b.disabled = false;
   } else if(id === "setGtr"){
     const b = $("#btnSaveRelay"); if(b) b.disabled = false;
+  } else if(id === "setCfAcc" || id === "setCfTok"){
+    const b = $("#btnSaveCf"); if(b) b.disabled = false;
   } else if(id === "setAdminEmail" || id === "setAdminPass"){
     const b = $("#btnSaveAdmin"); if(b) b.disabled = false;
   }

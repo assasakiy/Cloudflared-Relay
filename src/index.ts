@@ -493,33 +493,27 @@ interface ClientMutationBody {
 
 app.get("/api/clients", async (c) => {
   const clients = await listAllClients(c.env.RELAY_KV);
-  const safe = clients.map((cl) => {
-    const activeKey = cl.keys.find((k) => k.status === "active");
-    return {
-      id: cl.id,
-      name: cl.name,
-      status: cl.status,
-      logic: cl.logic,
-      ips: cl.ips,
-      pass: !!cl.passHash,
-      rawPass: cl.pass || null,
-      key: activeKey?.key || activeKey?.prefix || null,
-      rawKey: activeKey?.key || null,
-      keys: cl.keys.map((k) => ({
-        id: k.id,
-        name: k.name,
-        key: k.key || null,
-        prefix: k.prefix,
-        status: k.status,
-        createdAt: k.createdAt,
-        lastUsedAt: k.lastUsedAt,
-      })),
-      restrict: cl.restrict,
-      targets: cl.targets,
-      createdAt: cl.createdAt,
-      updatedAt: cl.updatedAt,
-    };
-  });
+  const safe = clients.map((cl) => ({
+    id: cl.id,
+    name: cl.name,
+    status: cl.status,
+    logic: cl.logic,
+    ips: cl.ips,
+    pass: !!cl.passHash,
+    key: cl.keys.find((k) => k.status === "active")?.prefix || null,
+    keys: cl.keys.map((k) => ({
+      id: k.id,
+      name: k.name,
+      prefix: k.prefix,
+      status: k.status,
+      createdAt: k.createdAt,
+      lastUsedAt: k.lastUsedAt,
+    })),
+    restrict: cl.restrict,
+    targets: cl.targets,
+    createdAt: cl.createdAt,
+    updatedAt: cl.updatedAt,
+  }));
   return c.json(safe);
 });
 
@@ -537,10 +531,9 @@ app.post("/api/clients", async (c) => {
   let rawPassword: string | null = null;
 
   if (body.newPassword) {
-    rawPassword = body.newPassword;
     passHash = await sha256Hex(body.newPassword);
   } else if (body.generatePassword) {
-    rawPassword = randomAlphanumeric(16);
+    rawPassword = randomAlphanumeric(20);
     passHash = await sha256Hex(rawPassword);
   }
 
@@ -553,7 +546,6 @@ app.post("/api/clients", async (c) => {
     keys.push({
       id: "ak_" + randomAlphanumeric(6),
       name: "Default Key",
-      key: rawKey,
       prefix: rawKey.slice(0, 11),
       hash: keyHash,
       status: "active",
@@ -567,7 +559,6 @@ app.post("/api/clients", async (c) => {
     status: body.status !== false,
     logic: body.logic === "ALL" ? "ALL" : "ANY",
     ips: Array.isArray(body.ips) ? body.ips.map((ip: string) => ip.trim()).filter(Boolean) : [],
-    pass: rawPassword || null,
     passHash,
     keys,
     restrict: !!body.restrict,
@@ -578,7 +569,6 @@ app.post("/api/clients", async (c) => {
 
   await saveClient(kv, client);
 
-  const activeKey = client.keys.find((k) => k.status === "active");
   return c.json({
     client: {
       id: client.id,
@@ -587,9 +577,7 @@ app.post("/api/clients", async (c) => {
       logic: client.logic,
       ips: client.ips,
       pass: !!client.passHash,
-      rawPass: client.pass || null,
-      key: activeKey?.key || activeKey?.prefix || null,
-      rawKey: activeKey?.key || null,
+      key: client.keys.find((k) => k.status === "active")?.prefix || null,
       restrict: client.restrict,
       targets: client.targets,
     },
@@ -622,15 +610,11 @@ app.put("/api/clients/:id", async (c) => {
 
   let rawPassword: string | null = null;
   if (body.newPassword) {
-    rawPassword = body.newPassword;
-    client.pass = rawPassword;
     client.passHash = await sha256Hex(body.newPassword);
   } else if (body.generatePassword) {
-    rawPassword = randomAlphanumeric(16);
-    client.pass = rawPassword;
+    rawPassword = randomAlphanumeric(20);
     client.passHash = await sha256Hex(rawPassword);
   } else if (body.removePassword) {
-    client.pass = null;
     client.passHash = null;
   }
 
@@ -644,7 +628,6 @@ app.put("/api/clients/:id", async (c) => {
     client.keys.push({
       id: "ak_" + randomAlphanumeric(6),
       name: "Rotated Key",
-      key: rawKey,
       prefix: rawKey.slice(0, 11),
       hash: keyHash,
       status: "active",
@@ -661,7 +644,6 @@ app.put("/api/clients/:id", async (c) => {
   client.updatedAt = Date.now();
   await saveClient(kv, client);
 
-  const activeKey = client.keys.find((k) => k.status === "active");
   return c.json({
     client: {
       id: client.id,
@@ -670,9 +652,7 @@ app.put("/api/clients/:id", async (c) => {
       logic: client.logic,
       ips: client.ips,
       pass: !!client.passHash,
-      rawPass: client.pass || null,
-      key: activeKey?.key || activeKey?.prefix || null,
-      rawKey: activeKey?.key || null,
+      key: client.keys.find((k) => k.status === "active")?.prefix || null,
       restrict: client.restrict,
       targets: client.targets,
     },
@@ -737,6 +717,8 @@ interface SettingsBody {
   appName?: string;
   logoUrl?: string;
   theme?: "auto" | "light" | "dark";
+  cfAccountId?: string;
+  cfApiToken?: string;
   adminEmail?: string;
   newPassword?: string;
 }
@@ -746,12 +728,22 @@ app.get("/api/settings", async (c) => {
   const settings = await getGlobalSettings(kv);
   const admin = await getAdmin(kv);
 
+  const envAccountId = c.env.CF_ANALYTICS_ACCOUNT_ID || c.env.CLOUDFLARE_ACCOUNT_ID || "";
+  const envToken = c.env.CF_ANALYTICS_API_TOKEN || c.env.CLOUDFLARE_API_TOKEN || "";
+
+  const effectiveAccountId = settings.cfAccountId || envAccountId;
+  const hasToken = !!(settings.cfApiToken || envToken);
+  const tokenSource = settings.cfApiToken ? "dashboard" : (envToken ? "env" : "none");
+
   return c.json({
     targetRestrict: settings.targetRestrict,
     appName: settings.appName || "Relay Gateway",
     logoUrl: settings.logoUrl || "",
     theme: settings.theme || "auto",
     adminEmail: admin?.email || "Belum diatur",
+    cfAccountId: effectiveAccountId,
+    hasCfToken: hasToken,
+    cfTokenSource: tokenSource,
   });
 });
 
@@ -772,6 +764,12 @@ app.post("/api/settings", async (c) => {
   }
   if (body.theme !== undefined) {
     settings.theme = body.theme;
+  }
+  if (body.cfAccountId !== undefined) {
+    settings.cfAccountId = body.cfAccountId.trim();
+  }
+  if (body.cfApiToken !== undefined && body.cfApiToken.trim()) {
+    settings.cfApiToken = body.cfApiToken.trim();
   }
 
   await saveGlobalSettings(kv, settings);
@@ -803,13 +801,22 @@ app.post("/api/settings", async (c) => {
   const updatedSettings = await getGlobalSettings(kv);
   const updatedAdmin = await getAdmin(kv);
 
+  const envAccountId = c.env.CF_ANALYTICS_ACCOUNT_ID || c.env.CLOUDFLARE_ACCOUNT_ID || "";
+  const envToken = c.env.CF_ANALYTICS_API_TOKEN || c.env.CLOUDFLARE_API_TOKEN || "";
+  const effectiveAccountId = updatedSettings.cfAccountId || envAccountId;
+  const hasToken = !!(updatedSettings.cfApiToken || envToken);
+  const tokenSource = updatedSettings.cfApiToken ? "dashboard" : (envToken ? "env" : "none");
+
   return c.json({
     success: true,
     targetRestrict: updatedSettings.targetRestrict,
     appName: updatedSettings.appName || "Relay Gateway",
     logoUrl: updatedSettings.logoUrl || "",
     theme: updatedSettings.theme || "auto",
-    adminEmail: updatedAdmin?.email || "Belum diatur",
+    adminEmail: updatedAdmin?.email || "",
+    cfAccountId: effectiveAccountId,
+    hasCfToken: hasToken,
+    cfTokenSource: tokenSource,
   });
 });
 
