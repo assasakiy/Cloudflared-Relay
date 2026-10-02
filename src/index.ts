@@ -346,6 +346,7 @@ interface LoginBody {
 
 app.get("/api/auth/status", async (c) => {
   const admin = await ensureBootstrap(c.env.RELAY_KV, c.env);
+  const settings = await getGlobalSettings(c.env.RELAY_KV);
   const token = getCookie(c, "relay_session");
   let loggedIn = false;
   let email: string | null = null;
@@ -360,6 +361,11 @@ app.get("/api/auth/status", async (c) => {
     configured: true,
     loggedIn,
     email,
+    branding: {
+      appName: settings.appName || "Relay Gateway",
+      logoUrl: settings.logoUrl || "",
+      theme: settings.theme || "auto",
+    },
   });
 });
 

@@ -306,7 +306,13 @@ async function api(path,opts={}){
   return data;
 }
 
-function showLogin(){ $("#login").classList.remove("hide"); $("#app").classList.add("hide"); }
+function showLogin(updateUrl = true){
+  $("#login").classList.remove("hide");
+  $("#app").classList.add("hide");
+  if(updateUrl && window.location.pathname !== "/login"){
+    window.history.pushState({ view: "login" }, "", "/login");
+  }
+}
 function showApp(){ $("#login").classList.add("hide"); $("#app").classList.remove("hide"); }
 
 function applyBranding(){
@@ -377,6 +383,11 @@ async function navigate(view, updateUrl = true){
 }
 
 window.addEventListener("popstate", async () => {
+  const p = window.location.pathname.toLowerCase();
+  if(p.includes("login")){
+    showLogin(false);
+    return;
+  }
   state.view = getViewFromPath();
   if(state.view === "logs" || state.view === "analytics") await loadAnalytics();
   render();
@@ -1271,6 +1282,8 @@ $("#go").onclick = async () => {
   try{
     await api("/api/auth/login", { method: "POST", body: { email, password } });
     showApp();
+    state.view = "clients";
+    window.history.pushState({ view: "clients" }, "", "/dashboard/clients");
     await syncAll();
     toast("Login berhasil");
   }catch(err){
@@ -1284,7 +1297,7 @@ $("#pw").addEventListener("keydown", e => { if(e.key === "Enter") $("#go").click
 
 const logout = async () => {
   try{ await api("/api/auth/logout", { method: "POST" }); }catch{}
-  showLogin();
+  showLogin(true);
   toast("Logged out");
 };
 $("#out").innerHTML = `${icons.logout} <span class="l">Log out</span>`;
@@ -1306,14 +1319,27 @@ if(savedTheme !== "auto") document.documentElement.dataset.theme = savedTheme;
 (async()=>{
   try{
     const st = await api("/api/auth/status");
+    if(st.branding){
+      state.settings = { ...state.settings, ...st.branding };
+      applyBranding();
+      if(st.branding.theme && st.branding.theme !== "auto" && !localStorage.getItem("relay_theme")){
+        document.documentElement.dataset.theme = st.branding.theme;
+      }
+    }
     if(st.loggedIn){
       showApp();
+      if(window.location.pathname === "/login" || window.location.pathname === "/"){
+        navigate("clients", true);
+      } else {
+        state.view = getViewFromPath();
+        render();
+      }
       await syncAll();
     }else{
-      showLogin();
+      showLogin(window.location.pathname !== "/login");
     }
   }catch{
-    showLogin();
+    showLogin(window.location.pathname !== "/login");
   }
 })();
 </script>
