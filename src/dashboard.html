@@ -649,8 +649,8 @@ function vSettings(){
     <div class="card set" style="padding:22px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <div>
-          <div style="font-weight:700">Cloudflare API & Account Credentials (All-in-One)</div>
-          <div class="id">ID Akun dan API Token All-in-One Cloudflare untuk izin dan integrasi.</div>
+          <div style="font-weight:700">Cloudflare API & Secrets (All-in-One)</div>
+          <div class="id">Otomatis terhubung dari environment secret Worker & Cloudflare.</div>
         </div>
         ${tokenStatusBadge}
       </div>
@@ -659,23 +659,22 @@ function vSettings(){
       
       <label style="margin-top:0">Cloudflare Account ID</label>
       <div class="inline">
-        <input id="setCfAcc" type="text" value="${esc(st.cfAccountId)}" placeholder="a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6">
-        <button class="btn sm" id="cpCfAccBtn" type="button">${icons.copy} Copy</button>
+        <input id="setCfAcc" type="text" readonly value="${esc(st.cfAccountId || '')}" placeholder="Otomatis terisi saat build">
+        <button class="btn sm" id="cpCfAccBtn" type="button" ${st.cfAccountId ? '' : 'disabled'}>${icons.copy} Copy</button>
       </div>
 
-      <label>Cloudflare All-in-One API Token</label>
+      <label>Cloudflare All-in-One API Token Secret</label>
       <div class="inline" style="position:relative">
         <div class="input-wrap" style="flex:1">
-          <input id="setCfTok" type="password" value="${esc(st.cfApiToken || '')}" placeholder="${st.hasCfToken ? '•••••••••••••••• (Tersimpan)' : 'Masukkan Cloudflare API Token'}">
+          <input id="setCfTok" type="password" readonly value="${esc(st.cfApiToken || '')}" placeholder="Otomatis terisi saat build">
           <button class="btn-eye" id="toggleTokEye" type="button" aria-label="Toggle token">${icons.eye}</button>
         </div>
         <button class="btn sm" id="cpCfTokBtn" type="button" ${st.cfApiToken ? '' : 'disabled'}>${icons.copy} Copy</button>
       </div>
-      <div class="id" style="margin-top:6px">Kredensial tersimpan di Secret Worker atau KV. Bisa langsung dilihat & disalin untuk aplikasi client.</div>
+      <div class="id" style="margin-top:8px">Kredensial internal Worker dengan Cloudflare. Tersimpan otomatis di KV & Secret. Tidak perlu disimpan manual, cukup salin bila diperlukan untuk client.</div>
 
-      <div class="foot" style="margin-top:24px;display:flex;justify-content:space-between;align-items:center">
-        <button class="btn ghost sm" id="btnTestCf" type="button">${icons.refresh} <span>Verifikasi Status Token</span></button>
-        <button class="btn" id="btnSaveCf" disabled>${icons.save} Save changes</button>
+      <div class="foot" style="margin-top:20px;display:flex;justify-content:flex-start">
+        <button class="btn ghost sm" id="btnTestCf" type="button" ${st.cfApiToken ? '' : 'disabled'}>${icons.refresh} <span>Verifikasi Status Token</span></button>
       </div>
     </div>
   </div>
@@ -1281,13 +1280,6 @@ document.addEventListener("click", async e => {
       targetRestrict: $("#setGtr").checked
     });
   }
-  // Save Settings: Analytics
-  else if(t.id === "btnSaveCf"){
-    const payload = { cfAccountId: $("#setCfAcc").value.trim() };
-    const tok = $("#setCfTok").value.trim();
-    if(tok) payload.cfApiToken = tok;
-    saveSettingsTab(t, payload);
-  }
   // Save Settings: Admin
   else if(t.id === "btnSaveAdmin"){
     const payload = { adminEmail: $("#setAdminEmail").value.trim() };
@@ -1333,8 +1325,6 @@ document.addEventListener("input", e => {
     const b = $("#btnSaveBranding"); if(b) b.disabled = false;
   } else if(id === "setGtr"){
     const b = $("#btnSaveRelay"); if(b) b.disabled = false;
-  } else if(id === "setCfAcc" || id === "setCfTok"){
-    const b = $("#btnSaveCf"); if(b) b.disabled = false;
   } else if(id === "setAdminEmail" || id === "setAdminPass"){
     const b = $("#btnSaveAdmin"); if(b) b.disabled = false;
   }

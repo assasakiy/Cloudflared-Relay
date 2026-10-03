@@ -370,6 +370,8 @@ app.use("/api/*", async (c, next) => {
 
 // --- Auth APIs ---
 
+const CURRENT_BUILD_VERSION = "2026.10.03.2";
+
 async function ensureBootstrap(kv: KVNamespace, env: Bindings): Promise<AdminRecord> {
   let admin = await getAdmin(kv);
   if (!admin) {
@@ -385,24 +387,56 @@ async function ensureBootstrap(kv: KVNamespace, env: Bindings): Promise<AdminRec
     }
   }
 
-  const envAccountId = (env.CF_ANALYTICS_ACCOUNT_ID || env.CLOUDFLARE_ACCOUNT_ID || "").trim();
-  const envToken = (env.CF_ANALYTICS_API_TOKEN || env.CLOUDFLARE_API_TOKEN || "").trim();
+  const envAccountId = (env.CLOUDFLARE_ACCOUNT_ID || env.CF_ANALYTICS_ACCOUNT_ID || "").trim();
+  const envToken = (env.CLOUDFLARE_API_TOKEN || env.CF_ANALYTICS_API_TOKEN || "").trim();
   const settings = await getGlobalSettings(kv);
   let changed = false;
+
   if (!settings.appName) {
     settings.appName = "Relay Gateway";
     settings.targetRestrict = false;
     settings.theme = "auto";
     changed = true;
   }
-  if (envAccountId && !settings.cfAccountId) {
+
+  // Update Account ID dari environment build jika berubah / baru
+  if (envAccountId && envAccountId !== settings.cfAccountId) {
     settings.cfAccountId = envAccountId;
     changed = true;
   }
-  if (envToken && !settings.cfApiToken) {
+
+  // Cek apakah token berubah dari environment build
+  const tokenToVerify = envToken || settings.cfApiToken || "";
+  const tokenChanged = envToken && envToken !== settings.cfApiToken;
+
+  if (tokenChanged) {
     settings.cfApiToken = envToken;
     changed = true;
   }
+
+  // Verifikasi token hanya saat token baru/berubah atau build baru (bukan di setiap request)
+  if (tokenToVerify && (tokenChanged || settings.cfTokenVerified === undefined || settings.cfTokenLastVersion !== CURRENT_BUILD_VERSION)) {
+    try {
+      const res = await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify", {
+        headers: { Authorization: "Bearer " + tokenToVerify },
+      });
+      const data: any = await res.json().catch(() => ({}));
+      if (res.ok && data.success && data.result?.status === "active") {
+        settings.cfTokenVerified = true;
+        settings.cfTokenStatusMsg = "Token aktif & valid. Siap untuk deploy & build repo.";
+      } else {
+        settings.cfTokenVerified = false;
+        settings.cfTokenStatusMsg = data.errors?.[0]?.message || "Token tidak aktif / di-revoke di Cloudflare";
+      }
+    } catch {
+      settings.cfTokenVerified = null;
+      settings.cfTokenStatusMsg = "Gagal memverifikasi ke Cloudflare API";
+    }
+    settings.cfTokenLastVersion = CURRENT_BUILD_VERSION;
+    settings.cfTokenLastChecked = Date.now();
+    changed = true;
+  }
+
   if (changed) {
     await saveGlobalSettings(kv, settings);
   }
@@ -741,34 +775,13 @@ app.get("/api/settings", async (c) => {
   const settings = await getGlobalSettings(kv);
   const admin = await getAdmin(kv);
 
-  const envAccountId = c.env.CF_ANALYTICS_ACCOUNT_ID || c.env.CLOUDFLARE_ACCOUNT_ID || "";
-  const envToken = c.env.CF_ANALYTICS_API_TOKEN || c.env.CLOUDFLARE_API_TOKEN || "";
+  const envAccountId = (c.env.CLOUDFLARE_ACCOUNT_ID || c.env.CF_ANALYTICS_ACCOUNT_ID || "").trim();
+  const envToken = (c.env.CLOUDFLARE_API_TOKEN || c.env.CF_ANALYTICS_API_TOKEN || "").trim();
 
   const effectiveAccountId = settings.cfAccountId || envAccountId;
   const effectiveToken = settings.cfApiToken || envToken;
   const hasToken = !!effectiveToken;
-  const tokenSource = settings.cfApiToken ? "dashboard" : (envToken ? "env" : "none");
-
-  let tokenVerified: boolean | null = null;
-  let tokenStatusMsg = "";
-  if (effectiveToken) {
-    try {
-      const cfRes = await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify", {
-        headers: { Authorization: "Bearer " + effectiveToken },
-      });
-      const cfData: any = await cfRes.json().catch(() => ({}));
-      if (cfRes.ok && cfData.success && cfData.result?.status === "active") {
-        tokenVerified = true;
-        tokenStatusMsg = "Token aktif dan valid (Aman untuk build & update repo)";
-      } else {
-        tokenVerified = false;
-        tokenStatusMsg = cfData.errors?.[0]?.message || "Token di-revoke atau kedaluwarsa di Cloudflare";
-      }
-    } catch {
-      tokenVerified = null;
-      tokenStatusMsg = "Gagal memverifikasi ke Cloudflare API";
-    }
-  }
+  const tokenSource = envToken ? "env" : (settings.cfApiToken ? "kv" : "none");
 
   return c.json({
     targetRestrict: settings.targetRestrict,
@@ -780,19 +793,18 @@ app.get("/api/settings", async (c) => {
     cfApiToken: effectiveToken,
     hasCfToken: hasToken,
     cfTokenSource: tokenSource,
-    tokenVerified,
-    tokenStatusMsg,
+    tokenVerified: settings.cfTokenVerified ?? null,
+    tokenStatusMsg: settings.cfTokenStatusMsg || "",
   });
 });
 
 app.post("/api/settings/verify-cf", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
   const kv = c.env.RELAY_KV;
   const settings = await getGlobalSettings(kv);
-  const token = (body.token || settings.cfApiToken || c.env.CF_ANALYTICS_API_TOKEN || c.env.CLOUDFLARE_API_TOKEN || "").trim();
+  const token = (settings.cfApiToken || c.env.CLOUDFLARE_API_TOKEN || c.env.CF_ANALYTICS_API_TOKEN || "").trim();
 
   if (!token) {
-    return c.json({ valid: false, error: "Token belum diisi" });
+    return c.json({ valid: false, error: "Token Cloudflare tidak ditemukan di secret/KV" });
   }
 
   try {
@@ -801,16 +813,24 @@ app.post("/api/settings/verify-cf", async (c) => {
     });
     const data: any = await res.json().catch(() => ({}));
     if (res.ok && data.success && data.result?.status === "active") {
+      settings.cfTokenVerified = true;
+      settings.cfTokenStatusMsg = "Token aktif & valid. Siap untuk deploy & build repo.";
+      settings.cfTokenLastChecked = Date.now();
+      await saveGlobalSettings(kv, settings);
       return c.json({
         valid: true,
         status: "active",
         message: "Token Cloudflare valid dan aktif. Aman untuk build & update repo.",
       });
     }
+    settings.cfTokenVerified = false;
+    settings.cfTokenStatusMsg = data.errors?.[0]?.message || "Token tidak valid atau sudah di-revoke";
+    settings.cfTokenLastChecked = Date.now();
+    await saveGlobalSettings(kv, settings);
     return c.json({
       valid: false,
       status: "invalid",
-      error: data.errors?.[0]?.message || "Token tidak valid atau sudah di-revoke",
+      error: settings.cfTokenStatusMsg,
     });
   } catch (err: any) {
     return c.json({

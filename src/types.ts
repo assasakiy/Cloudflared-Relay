@@ -41,6 +41,10 @@ export interface GlobalSettings {
   theme?: "auto" | "light" | "dark";
   cfAccountId?: string;
   cfApiToken?: string;
+  cfTokenVerified?: boolean | null;
+  cfTokenStatusMsg?: string;
+  cfTokenLastVersion?: string;
+  cfTokenLastChecked?: number;
 }
 
 export interface Bindings {
