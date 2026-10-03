@@ -861,8 +861,31 @@ app.post("/api/settings", async (c) => {
   if (body.cfAccountId !== undefined) {
     settings.cfAccountId = body.cfAccountId.trim();
   }
-  if (body.cfApiToken !== undefined && body.cfApiToken.trim()) {
-    settings.cfApiToken = body.cfApiToken.trim();
+  if (body.cfApiToken !== undefined) {
+    const newTok = body.cfApiToken.trim();
+    settings.cfApiToken = newTok;
+    if (newTok) {
+      try {
+        const res = await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify", {
+          headers: { Authorization: "Bearer " + newTok },
+        });
+        const data: any = await res.json().catch(() => ({}));
+        if (res.ok && data.success && data.result?.status === "active") {
+          settings.cfTokenVerified = true;
+          settings.cfTokenStatusMsg = "Token aktif & valid. Siap untuk deploy & build repo.";
+        } else {
+          settings.cfTokenVerified = false;
+          settings.cfTokenStatusMsg = data.errors?.[0]?.message || "Token tidak aktif / di-revoke di Cloudflare";
+        }
+      } catch {
+        settings.cfTokenVerified = null;
+        settings.cfTokenStatusMsg = "Gagal memverifikasi ke Cloudflare API";
+      }
+      settings.cfTokenLastChecked = Date.now();
+    } else {
+      settings.cfTokenVerified = null;
+      settings.cfTokenStatusMsg = "";
+    }
   }
 
   await saveGlobalSettings(kv, settings);
@@ -912,6 +935,8 @@ app.post("/api/settings", async (c) => {
     cfApiToken: effectiveToken,
     hasCfToken: hasToken,
     cfTokenSource: tokenSource,
+    tokenVerified: updatedSettings.cfTokenVerified ?? null,
+    tokenStatusMsg: updatedSettings.cfTokenStatusMsg || "",
   });
 });
 
